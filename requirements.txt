@@ -1,8 +1,11 @@
 openai-whisper
 setuptools-rust
-pyannote.audio
+speechbrain
+scikit-learn
+pydub
 pandas
-# torch is installed as a dependency of openai-whisper
-# For GPU support, the user might need to install torch with CUDA support manually:
-# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-
+numpy<2.0
+torch==2.3.1
+torchvision==0.18.1
+torchaudio==2.3.1
+--extra-index-url https://download.pytorch.org/whl/cpu

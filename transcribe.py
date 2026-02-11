@@ -4,8 +4,12 @@ import sys
 import torch
 import whisper
 import os
+import numpy as np
 from datetime import datetime
 from pathlib import Path
+from pydub import AudioSegment
+from sklearn.cluster import AgglomerativeClustering
+from speechbrain.inference.speaker import EncoderClassifier
 
 def check_file(path):
     if not os.path.exists(path):
@@ -26,41 +30,82 @@ def save_transcript(text, filename):
         f.write(text)
     return file_path
 
-def align_segments_with_speakers(segments, diarization):
-    aligned_transcript = []
-    
-    for segment in segments:
-        s_start = segment['start']
-        s_end = segment['end']
-        s_text = segment['text'].strip()
-        
-        # Find the speaker who was talking the most during this segment
-        speaker_overlaps = {}
-        for turn, _, speaker in diarization.itertracks(yield_label=True):
-            # Calculate overlap
-            overlap_start = max(s_start, turn.start)
-            overlap_end = min(s_end, turn.end)
-            
-            if overlap_end > overlap_start:
-                overlap_duration = overlap_end - overlap_start
-                speaker_overlaps[speaker] = speaker_overlaps.get(speaker, 0) + overlap_duration
-        
-        if speaker_overlaps:
-            # Pick the speaker with the most overlap
-            best_speaker = max(speaker_overlaps, key=speaker_overlaps.get)
-            aligned_transcript.append(f"{best_speaker}: {s_text}")
-        else:
-            aligned_transcript.append(f"Unknown: {s_text}")
-            
-    return "\n".join(aligned_transcript)
+def perform_diarization(audio_path, segments, device):
+    """
+    Non-gated diarization using SpeechBrain embeddings and Clustering.
+    """
+    print("[*] Extracting speaker embeddings for diarization...")
+    try:
+        classifier = EncoderClassifier.from_hparams(
+            source="speechbrain/spkrec-ecapa-voxceleb",
+            run_opts={"device": device},
+            savedir=os.path.join(os.path.expanduser("~"), ".cache", "speechbrain")
+        )
+    except Exception as e:
+        print(f"[!] Error loading SpeechBrain model: {e}")
+        return None
 
-def transcribe(audio_path, model_name="base", translate=False, diarize=False, hf_token=None):
+    audio = AudioSegment.from_file(audio_path)
+    embeddings = []
+    valid_segments = []
+
+    for seg in segments:
+        start_ms = int(seg['start'] * 1000)
+        end_ms = int(seg['end'] * 1000)
+        
+        # Extract segment audio
+        seg_audio = audio[start_ms:end_ms]
+        if len(seg_audio) < 100: # Skip very short segments
+            continue
+            
+        # Convert pydub audio to torch tensor
+        samples = np.array(seg_audio.get_array_of_samples()).astype(np.float32)
+        # Normalize
+        samples = samples / (2**15)
+        if seg_audio.channels > 1:
+            samples = samples.reshape((-1, seg_audio.channels)).mean(axis=1)
+            
+        signal = torch.from_numpy(samples).to(device)
+        
+        with torch.no_grad():
+            emb = classifier.encode_batch(signal.unsqueeze(0))
+            embeddings.append(emb.squeeze().cpu().numpy())
+            valid_segments.append(seg)
+
+    if not embeddings:
+        return None
+
+    # Cluster embeddings
+    embeddings = np.array(embeddings)
+    # Simple heuristic: if we have few segments, don't over-cluster
+    num_clusters = min(len(embeddings), 5) # Cap at 5 for small files
+    
+    # Use Agglomerative Clustering (Standard for cold-start diarization)
+    # We use 'cosine' distance as it's best for embeddings
+    clustering = AgglomerativeClustering(
+        n_clusters=None, 
+        distance_threshold=0.8, # Adjust for sensitivity
+        metric='cosine', 
+        linkage='average'
+    )
+    labels = clustering.fit_predict(embeddings)
+
+    # Map labels to segments
+    diarization_map = []
+    for seg, label in zip(valid_segments, labels):
+        diarization_map.append({
+            'start': seg['start'],
+            'end': seg['end'],
+            'speaker': f"SPEAKER_{label:02d}",
+            'text': seg['text'].strip()
+        })
+    
+    return diarization_map
+
+def transcribe(audio_path, model_name="base", translate=False, diarize=False):
     # Determine device
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"[*] Using device: {device.upper()}")
-    
-    # Load token from env if not provided
-    token = hf_token or os.environ.get("HF_TOKEN")
     
     # Load model
     print(f"[*] Loading Whisper model '{model_name}'...")
@@ -70,61 +115,45 @@ def transcribe(audio_path, model_name="base", translate=False, diarize=False, hf
         print(f"Error loading model: {e}")
         sys.exit(1)
     
-    # 1. Diarization (Optional) - Do this first to align later
-    diarization_data = None
-    if diarize:
-        if not token:
-            print("[!] Warning: Speaker diarization requested but no Hugging Face token found in args or environment.")
-            print("[!] Skipping diarization...")
-        else:
-            print("[*] Running speaker diarization...")
-            try:
-                from pyannote.audio import Pipeline
-                pipeline = Pipeline.from_pretrained(
-                    "pyannote/speaker-diarization-3.1",
-                    token=token
-                )
-                if device == "cuda":
-                    pipeline.to(torch.device("cuda"))
-                
-                diarization_data = pipeline(audio_path)
-            except Exception as e:
-                print(f"Error during diarization: {e}")
-                print("[!] Ensure you have accepted the conditions for 'pyannote/speaker-diarization-3.1' and 'pyannote/segmentation-3.0' on Hugging Face.")
-
     combined_output = ""
     
-    # 2. Original Transcription
+    # 1. Original Transcription (Always needed for base)
     print(f"[*] Running transcription (original) on '{audio_path}'...")
     try:
         orig_result = model.transcribe(audio_path, task="transcribe", verbose=False)
         orig_segments = orig_result.get('segments', [])
         
-        if diarize and diarization_data:
-            orig_text = align_segments_with_speakers(orig_segments, diarization_data)
-        elif orig_segments:
-            orig_text = "\n".join([seg['text'].strip() for seg in orig_segments])
+        if diarize:
+            diarized_segments = perform_diarization(audio_path, orig_segments, device)
+            if diarized_segments:
+                orig_text = "\n".join([f"{s['speaker']}: {s['text']}" for s in diarized_segments])
+            else:
+                orig_text = "\n".join([seg['text'].strip() for seg in orig_segments])
         else:
-            orig_text = orig_result['text'].strip()
+            orig_text = "\n".join([seg['text'].strip() for seg in orig_segments])
         
         combined_output += "--- ORIGINAL TRANSCRIPT ---\n" + orig_text + "\n"
     except Exception as e:
         print(f"Error during transcription: {e}")
         sys.exit(1)
 
-    # 3. Optional Translation
+    # 2. Optional Translation
     if translate:
         print(f"[*] Running translation to English...")
         try:
             trans_result = model.transcribe(audio_path, task="translate", verbose=False)
             trans_segments = trans_result.get('segments', [])
             
-            if diarize and diarization_data:
-                trans_text = align_segments_with_speakers(trans_segments, diarization_data)
-            elif trans_segments:
-                trans_text = "\n".join([seg['text'].strip() for seg in trans_segments])
+            if diarize:
+                # Reuse diarization logic for translated segments
+                # Note: Whisper produces different segments for translation, so we re-align
+                diarized_trans = perform_diarization(audio_path, trans_segments, device)
+                if diarized_trans:
+                    trans_text = "\n".join([f"{s['speaker']}: {s['text']}" for s in diarized_trans])
+                else:
+                    trans_text = "\n".join([seg['text'].strip() for seg in trans_segments])
             else:
-                trans_text = trans_result['text'].strip()
+                trans_text = "\n".join([seg['text'].strip() for seg in trans_segments])
             
             combined_output += "\n--- ENGLISH TRANSLATION ---\n" + trans_text + "\n"
         except Exception as e:
@@ -132,19 +161,17 @@ def transcribe(audio_path, model_name="base", translate=False, diarize=False, hf
 
     return combined_output.strip()
 
-
 def main():
-    parser = argparse.ArgumentParser(description="Advanced Voice-to-Text using Whisper.")
+    parser = argparse.ArgumentParser(description="Standalone Voice-to-Text using Whisper & SpeechBrain.")
     parser.add_argument("input", help="Path to the audio file (.wav, .mp3, etc.)")
     parser.add_argument("--model", default="base", help="Whisper model size (tiny, base, small, medium, large). Default: base")
     parser.add_argument("--translate", action="store_true", help="Translate non-English audio to English")
-    parser.add_argument("--diarize", action="store_true", help="Perform speaker diarization (requires HF token)")
-    parser.add_argument("--hf-token", help="Hugging Face token for diarization")
+    parser.add_argument("--diarize", action="store_true", help="Perform speaker diarization (No token required)")
     
     args = parser.parse_args()
     
     audio_file = check_file(args.input)
-    transcript = transcribe(audio_file, args.model, args.translate, args.diarize, args.hf_token)
+    transcript = transcribe(audio_file, args.model, args.translate, args.diarize)
     
     # Print to terminal
     print("\n" + "="*20 + " TRANSCRIPT " + "="*20)

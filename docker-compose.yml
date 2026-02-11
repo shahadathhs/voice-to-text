@@ -5,10 +5,3 @@ services:
       - .:/app/data
       - ./transcripts:/app/transcripts
     working_dir: /app/data
-    env_file:
-      - .env
-    environment:
-      - HF_TOKEN=${HF_TOKEN}
-
-
-

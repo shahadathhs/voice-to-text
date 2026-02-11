@@ -1,6 +1,6 @@
 # Simple Voice-to-Text System
 
-A standalone, local voice-to-text system using OpenAI's Whisper. This version supports **Dual Output (Original + Translation)**, **Speaker Diarization**, and simplified usage with **Makefile**.
+A standalone, local voice-to-text system using OpenAI's Whisper. This version supports **Dual Output (Original + Translation)** and **Local-First Speaker Diarization** (no tokens required).
 
 ## Prerequisites
 
@@ -36,21 +36,6 @@ make translate AUDIO=audio.wav
 
 To identify different speakers and label the transcript (`SPEAKER_00: Hello`):
 
-1. **Get a Hugging Face Token**:
-   - Create an account on [Hugging Face](https://huggingface.co/).
-   - Go to [Settings -> Access Tokens](https://huggingface.co/settings/tokens) and create a "Read" token.
-   - **Important**: Accept the user conditions for [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1).
-2. **Setup .env file**:
-   - Create a `.env` file from the example:
-     ```bash
-     cp .env.example .env
-     ```
-   - Edit `.env` and paste your Hugging Face token:
-     ```bash
-     HF_TOKEN=your_token_here
-     ```
-3. **Run with Diarization**:
-
 ```bash
 make diarize AUDIO=audio.wav
 ```
@@ -82,8 +67,8 @@ docker compose run --rm whisper audio.wav
 # Dual Output (Original + translation)
 docker compose run --rm whisper audio.wav --translate
 
-# Diarization
-docker compose run --rm whisper audio.wav --diarize --hf-token YOUR_TOKEN
+# Diarization (No token required!)
+docker compose run --rm whisper audio.wav --diarize
 ```
 
 ---
@@ -92,13 +77,25 @@ docker compose run --rm whisper audio.wav --diarize --hf-token YOUR_TOKEN
 
 - Transcripts are saved to `transcripts/`.
 - If diarization is enabled, output follows the format: `SPEAKER_XX: [Text segment]`
-- If translation is enabled, files contain both the **Original language** and the **English translation**, both labeled with speakers if requested.
+- If translation is enabled, files contain both the **Original language** and the **English translation**.
+
+---
+
+## 💾 Offline Mode & Model Caching
+
+The system automatically caches models in the `models/` directory. Once a model is downloaded, you can run the system without an internet connection.
+
+### How to use Offline:
+
+1.  **First Run**: Run the system once while connected to the internet to download the models.
+2.  **Verify**: Check that the `models/` folder contains Whisper and SpeechBrain data.
+3.  **Run Offline**: Subsequent runs will use the cached files automatically.
 
 ---
 
 ## 🛠️ Local Installation (Manual)
 
-1. **Install FFmpeg**: `sudo apt update && sudo apt install ffmpeg`
+1. **Install FFmpeg**: `sudo apt update && sudo apt install ffmpeg libsndfile1`
 2. **Setup Environment**:
    ```bash
    python3 -m venv venv
@@ -107,7 +104,7 @@ docker compose run --rm whisper audio.wav --diarize --hf-token YOUR_TOKEN
    ```
 3. **Run**:
    ```bash
-   python3 transcribe.py audio.wav --translate --diarize --hf-token YOUR_TOKEN
+   python3 transcribe.py audio.wav --translate --diarize
    ```
 
 ---
@@ -116,5 +113,12 @@ docker compose run --rm whisper audio.wav --diarize --hf-token YOUR_TOKEN
 
 - `--model`: Choose model size (`tiny`, `base`, `small`, `medium`, `large`). Default: `base`.
 - `--translate`: Translate non-English audio to English.
-- `--diarize`: Enable speaker diarization.
-- `--hf-token`: Your Hugging Face access token (required for diarization).
+- `--diarize`: Enable speaker diarization (uses SpeechBrain, no token needed).
+
+---
+
+## ❓ Troubleshooting
+
+### 403 Client Error during download
+
+If you see a 403 error, ensure you have a stable internet connection for the first run. The system uses open-source models from SpeechBrain and OpenAI. No Hugging Face tokens are required.
