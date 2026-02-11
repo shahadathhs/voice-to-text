@@ -9,6 +9,10 @@ MODEL ?= base
 build:
 	sudo docker compose build
 
+# Force rebuild (no cache)
+rebuild:
+	sudo docker compose build --no-cache
+
 # Basic transcription
 run:
 	sudo docker compose run --rm whisper $(AUDIO) --model $(MODEL)

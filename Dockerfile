@@ -17,8 +17,8 @@ RUN pip install --no-cache-dir --upgrade pip
 # Copy requirements
 COPY requirements.txt .
 
-# Install dependencies in stages to reduce memory pressure
-RUN pip install --no-cache-dir "numpy<2.0" torch==2.3.1 torchvision==0.18.1 torchaudio==2.3.1 --index-url https://download.pytorch.org/whl/cpu
+# Install dependencies from requirements.txt
+ARG CACHEBUST=1
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Create transcripts directory

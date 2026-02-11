@@ -1,10 +1,18 @@
+# Core Transcription
 openai-whisper
 setuptools-rust
-speechbrain
-scikit-learn
-pydub
-pandas
+
+# Data Handling & System
 numpy<2.0
+pandas
+
+# Audio Processing
+pydub
+speechbrain
+huggingface-hub<0.26.0
+scikit-learn
+
+# Torch Stack (Pinned for compatibility)
 torch==2.3.1
 torchvision==0.18.1
 torchaudio==2.3.1

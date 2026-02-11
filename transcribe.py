@@ -1,15 +1,25 @@
 #!/usr/bin/env python3
+print("[DEBUG] Starting transcribe.py...")
 import argparse
 import sys
-import torch
-import whisper
+print("[DEBUG] Importing os...")
 import os
+print("[DEBUG] Importing numpy...")
 import numpy as np
+print("[DEBUG] Importing datetime...")
 from datetime import datetime
 from pathlib import Path
 from pydub import AudioSegment
 from sklearn.cluster import AgglomerativeClustering
 from speechbrain.inference.speaker import EncoderClassifier
+
+# Defer heavy imports to avoid segfaults during initial load
+print("[DEBUG] Importing torch...")
+import torch
+print("[DEBUG] Importing whisper...")
+import whisper
+
+print("[DEBUG] Imports complete.")
 
 def check_file(path):
     if not os.path.exists(path):
@@ -36,6 +46,10 @@ def perform_diarization(audio_path, segments, device):
     """
     print("[*] Extracting speaker embeddings for diarization...")
     try:
+        from pydub import AudioSegment
+        from sklearn.cluster import AgglomerativeClustering
+        from speechbrain.inference.speaker import EncoderClassifier
+        
         classifier = EncoderClassifier.from_hparams(
             source="speechbrain/spkrec-ecapa-voxceleb",
             run_opts={"device": device},
