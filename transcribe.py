@@ -26,10 +26,41 @@ def save_transcript(text, filename):
         f.write(text)
     return file_path
 
+def align_segments_with_speakers(segments, diarization):
+    aligned_transcript = []
+    
+    for segment in segments:
+        s_start = segment['start']
+        s_end = segment['end']
+        s_text = segment['text'].strip()
+        
+        # Find the speaker who was talking the most during this segment
+        speaker_overlaps = {}
+        for turn, _, speaker in diarization.itertracks(yield_label=True):
+            # Calculate overlap
+            overlap_start = max(s_start, turn.start)
+            overlap_end = min(s_end, turn.end)
+            
+            if overlap_end > overlap_start:
+                overlap_duration = overlap_end - overlap_start
+                speaker_overlaps[speaker] = speaker_overlaps.get(speaker, 0) + overlap_duration
+        
+        if speaker_overlaps:
+            # Pick the speaker with the most overlap
+            best_speaker = max(speaker_overlaps, key=speaker_overlaps.get)
+            aligned_transcript.append(f"{best_speaker}: {s_text}")
+        else:
+            aligned_transcript.append(f"Unknown: {s_text}")
+            
+    return "\n".join(aligned_transcript)
+
 def transcribe(audio_path, model_name="base", translate=False, diarize=False, hf_token=None):
     # Determine device
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"[*] Using device: {device.upper()}")
+    
+    # Load token from env if not provided
+    token = hf_token or os.environ.get("HF_TOKEN")
     
     # Load model
     print(f"[*] Loading Whisper model '{model_name}'...")
@@ -39,26 +70,11 @@ def transcribe(audio_path, model_name="base", translate=False, diarize=False, hf
         print(f"Error loading model: {e}")
         sys.exit(1)
     
-    # Transcribe/Translate
-    task = "translate" if translate else "transcribe"
-    print(f"[*] Running {task} on '{audio_path}'...")
-    try:
-        result = model.transcribe(audio_path, task=task, verbose=False)
-        # Add line breaks between segments for better readability
-        segments = result.get('segments', [])
-        if segments:
-            transcript_text = "\n".join([seg['text'].strip() for seg in segments])
-        else:
-            transcript_text = result['text'].strip()
-    except Exception as e:
-        print(f"Error during transcription: {e}")
-        sys.exit(1)
-
-
-    # Diarization
+    # 1. Diarization (Optional) - Do this first to align later
+    diarization_data = None
     if diarize:
-        if not hf_token:
-            print("[!] Warning: Speaker diarization requested but no Hugging Face token provided.")
+        if not token:
+            print("[!] Warning: Speaker diarization requested but no Hugging Face token found in args or environment.")
             print("[!] Skipping diarization...")
         else:
             print("[*] Running speaker diarization...")
@@ -66,25 +82,56 @@ def transcribe(audio_path, model_name="base", translate=False, diarize=False, hf
                 from pyannote.audio import Pipeline
                 pipeline = Pipeline.from_pretrained(
                     "pyannote/speaker-diarization-3.1",
-                    use_auth_token=hf_token
+                    token=token
                 )
                 if device == "cuda":
                     pipeline.to(torch.device("cuda"))
                 
-                diarization = pipeline(audio_path)
-                
-                # Combine transcription with diarization (Simplified version)
-                # Note: For professional results, we should align whisper segments with diarization turns.
-                # Here we'll just print the diarization map for now.
-                diarization_output = "\n\n--- Speaker Timeline ---\n"
-                for turn, _, speaker in diarization.itertracks(yield_label=True):
-                    diarization_output += f"[{turn.start:0.1f}s - {turn.end:0.1f}s] {speaker}\n"
-                transcript_text += diarization_output
+                diarization_data = pipeline(audio_path)
             except Exception as e:
                 print(f"Error during diarization: {e}")
-                print("[!] Ensure you have accepted the conditions for 'pyannote/speaker-diarization-3.1' on Hugging Face.")
+                print("[!] Ensure you have accepted the conditions for 'pyannote/speaker-diarization-3.1' and 'pyannote/segmentation-3.0' on Hugging Face.")
 
-    return transcript_text
+    combined_output = ""
+    
+    # 2. Original Transcription
+    print(f"[*] Running transcription (original) on '{audio_path}'...")
+    try:
+        orig_result = model.transcribe(audio_path, task="transcribe", verbose=False)
+        orig_segments = orig_result.get('segments', [])
+        
+        if diarize and diarization_data:
+            orig_text = align_segments_with_speakers(orig_segments, diarization_data)
+        elif orig_segments:
+            orig_text = "\n".join([seg['text'].strip() for seg in orig_segments])
+        else:
+            orig_text = orig_result['text'].strip()
+        
+        combined_output += "--- ORIGINAL TRANSCRIPT ---\n" + orig_text + "\n"
+    except Exception as e:
+        print(f"Error during transcription: {e}")
+        sys.exit(1)
+
+    # 3. Optional Translation
+    if translate:
+        print(f"[*] Running translation to English...")
+        try:
+            trans_result = model.transcribe(audio_path, task="translate", verbose=False)
+            trans_segments = trans_result.get('segments', [])
+            
+            if diarize and diarization_data:
+                trans_text = align_segments_with_speakers(trans_segments, diarization_data)
+            elif trans_segments:
+                trans_text = "\n".join([seg['text'].strip() for seg in trans_segments])
+            else:
+                trans_text = trans_result['text'].strip()
+            
+            combined_output += "\n--- ENGLISH TRANSLATION ---\n" + trans_text + "\n"
+        except Exception as e:
+            print(f"Error during translation: {e}")
+
+    return combined_output.strip()
+
 
 def main():
     parser = argparse.ArgumentParser(description="Advanced Voice-to-Text using Whisper.")

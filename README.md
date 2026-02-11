@@ -1,58 +1,98 @@
 # Simple Voice-to-Text System
 
-A standalone, local voice-to-text system using OpenAI's Whisper. This version supports **Translation**, **Speaker Diarization**, and automatic **Output Persistence**.
+A standalone, local voice-to-text system using OpenAI's Whisper. This version supports **Dual Output (Original + Translation)**, **Speaker Diarization**, and simplified usage with **Makefile**.
 
 ## Prerequisites
 
 - **Docker** and **Docker Compose** installed.
 - **FFmpeg** (only if running locally without Docker).
+- **Make** (installed by default on most Linux systems).
 
 ---
 
-## 🚀 Quick Start with Docker
+## 🚀 Quick Start with Makefile (Easiest)
+
+We provide a `Makefile` to simplify the Docker commands.
 
 ### 1. Build the Image
 
 ```bash
-docker compose build
+make build
 ```
 
 ### 2. Run Basic Transcription
 
 ```bash
-docker compose run --rm whisper audio.wav
+make run AUDIO=audio.wav
 ```
 
-### 3. Translate to English
-
-If the audio is in another language and you want English text:
+### 3. Translate to English (Includes Original Transcript)
 
 ```bash
-docker compose run --rm whisper audio.wav --translate
+make translate AUDIO=audio.wav
 ```
 
-### 4. Speaker Diarization (Who is saying what?)
+### 4. Speaker Diarization
 
-To identify different speakers in the audio:
+To identify different speakers and label the transcript (`SPEAKER_00: Hello`):
 
 1. **Get a Hugging Face Token**:
    - Create an account on [Hugging Face](https://huggingface.co/).
    - Go to [Settings -> Access Tokens](https://huggingface.co/settings/tokens) and create a "Read" token.
-   - **Important**: Accept the user conditions for the following models on Hugging Face:
-     - [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1)
-     - [pyannote/segmentation-3.0](https://huggingface.co/pyannote/segmentation-3.0)
-2. **Run with Token**:
+   - **Important**: Accept the user conditions for [pyannote/speaker-diarization-3.1](https://huggingface.co/pyannote/speaker-diarization-3.1).
+2. **Setup .env file**:
+   - Create a `.env` file from the example:
+     ```bash
+     cp .env.example .env
+     ```
+   - Edit `.env` and paste your Hugging Face token:
+     ```bash
+     HF_TOKEN=your_token_here
+     ```
+3. **Run with Diarization**:
 
 ```bash
-docker compose run --rm whisper audio.wav --diarize --hf-token YOUR_HF_TOKEN
+make diarize AUDIO=audio.wav
+```
+
+### 5. All-in-one (Transcribe + Translate + Diarize)
+
+```bash
+make all AUDIO=audio.wav
+```
+
+---
+
+## 🐳 Quick Start with Docker (Manual)
+
+If you don't have `make` installed:
+
+### 1. Build
+
+```bash
+docker compose build
+```
+
+### 2. Run
+
+```bash
+# Basic
+docker compose run --rm whisper audio.wav
+
+# Dual Output (Original + translation)
+docker compose run --rm whisper audio.wav --translate
+
+# Diarization
+docker compose run --rm whisper audio.wav --diarize --hf-token YOUR_TOKEN
 ```
 
 ---
 
 ## 📂 Output
 
-All transcripts are automatically saved to the `transcripts/` folder with a unique timestamp:
-`transcripts/audio_20231027_120000.txt`
+- Transcripts are saved to `transcripts/`.
+- If diarization is enabled, output follows the format: `SPEAKER_XX: [Text segment]`
+- If translation is enabled, files contain both the **Original language** and the **English translation**, both labeled with speakers if requested.
 
 ---
 
