@@ -3,4 +3,6 @@ services:
     build: .
     volumes:
       - .:/app/data
+      - ./transcripts:/app/transcripts
     working_dir: /app/data
+
