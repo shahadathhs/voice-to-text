@@ -1,0 +1,5 @@
+openai-whisper
+setuptools-rust
+# torch is installed as a dependency of openai-whisper
+# For GPU support, the user might need to install torch with CUDA support manually:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118

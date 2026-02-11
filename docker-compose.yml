@@ -1,0 +1,6 @@
+services:
+  whisper:
+    build: .
+    volumes:
+      - .:/app/data
+    working_dir: /app/data
