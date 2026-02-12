@@ -1,6 +1,12 @@
 # Core Transcription
 openai-whisper
 setuptools-rust
+ruff
+
+# API Server
+fastapi
+uvicorn
+python-multipart
 
 # Data Handling & System
 numpy<2.0

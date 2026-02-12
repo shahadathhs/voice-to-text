@@ -1,25 +1,14 @@
 #!/usr/bin/env python3
-print("[DEBUG] Starting transcribe.py...")
 import argparse
 import sys
-print("[DEBUG] Importing os...")
 import os
-print("[DEBUG] Importing numpy...")
 import numpy as np
-print("[DEBUG] Importing datetime...")
 from datetime import datetime
 from pathlib import Path
-from pydub import AudioSegment
-from sklearn.cluster import AgglomerativeClustering
-from speechbrain.inference.speaker import EncoderClassifier
 
 # Defer heavy imports to avoid segfaults during initial load
-print("[DEBUG] Importing torch...")
 import torch
-print("[DEBUG] Importing whisper...")
 import whisper
-
-print("[DEBUG] Imports complete.")
 
 def check_file(path):
     if not os.path.exists(path):
@@ -40,7 +29,7 @@ def save_transcript(text, filename):
         f.write(text)
     return file_path
 
-def perform_diarization(audio_path, segments, device):
+def perform_diarization(audio_path, segments, device, classifier=None):
     """
     Non-gated diarization using SpeechBrain embeddings and Clustering.
     """
@@ -50,11 +39,13 @@ def perform_diarization(audio_path, segments, device):
         from sklearn.cluster import AgglomerativeClustering
         from speechbrain.inference.speaker import EncoderClassifier
         
-        classifier = EncoderClassifier.from_hparams(
-            source="speechbrain/spkrec-ecapa-voxceleb",
-            run_opts={"device": device},
-            savedir=os.path.join(os.path.expanduser("~"), ".cache", "speechbrain")
-        )
+        if classifier is None:
+            # Load locally if not provided
+            classifier = EncoderClassifier.from_hparams(
+                source="speechbrain/spkrec-ecapa-voxceleb",
+                run_opts={"device": device},
+                savedir=os.path.join(os.path.expanduser("~"), ".cache", "speechbrain")
+            )
     except Exception as e:
         print(f"[!] Error loading SpeechBrain model: {e}")
         return None
@@ -116,18 +107,20 @@ def perform_diarization(audio_path, segments, device):
     
     return diarization_map
 
-def transcribe(audio_path, model_name="base", translate=False, diarize=False):
-    # Determine device
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"[*] Using device: {device.upper()}")
+def transcribe(audio_path, model="base", translate=False, diarize=False, device=None, classifier=None):
+    # Determine device if not provided
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print(f"[*] Using device: {device.upper()}")
     
-    # Load model
-    print(f"[*] Loading Whisper model '{model_name}'...")
-    try:
-        model = whisper.load_model(model_name, device=device)
-    except Exception as e:
-        print(f"Error loading model: {e}")
-        sys.exit(1)
+    # Load model if it's a string name, otherwise use the passed object
+    if isinstance(model, str):
+        print(f"[*] Loading Whisper model '{model}'...")
+        try:
+            model = whisper.load_model(model, device=device)
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            sys.exit(1)
     
     combined_output = ""
     
@@ -138,7 +131,7 @@ def transcribe(audio_path, model_name="base", translate=False, diarize=False):
         orig_segments = orig_result.get('segments', [])
         
         if diarize:
-            diarized_segments = perform_diarization(audio_path, orig_segments, device)
+            diarized_segments = perform_diarization(audio_path, orig_segments, device, classifier=classifier)
             if diarized_segments:
                 orig_text = "\n".join([f"{s['speaker']}: {s['text']}" for s in diarized_segments])
             else:
@@ -149,7 +142,11 @@ def transcribe(audio_path, model_name="base", translate=False, diarize=False):
         combined_output += "--- ORIGINAL TRANSCRIPT ---\n" + orig_text + "\n"
     except Exception as e:
         print(f"Error during transcription: {e}")
-        sys.exit(1)
+        # Only exit/raise if we are in CLI mode (inferred by model being a string loaded locally)
+        # In server mode, we might want to raise the exception to be handled by the route
+        if isinstance(model, str):
+            sys.exit(1)
+        raise e
 
     # 2. Optional Translation
     if translate:
@@ -161,7 +158,7 @@ def transcribe(audio_path, model_name="base", translate=False, diarize=False):
             if diarize:
                 # Reuse diarization logic for translated segments
                 # Note: Whisper produces different segments for translation, so we re-align
-                diarized_trans = perform_diarization(audio_path, trans_segments, device)
+                diarized_trans = perform_diarization(audio_path, trans_segments, device, classifier=classifier)
                 if diarized_trans:
                     trans_text = "\n".join([f"{s['speaker']}: {s['text']}" for s in diarized_trans])
                 else:
@@ -185,7 +182,7 @@ def main():
     args = parser.parse_args()
     
     audio_file = check_file(args.input)
-    transcript = transcribe(audio_file, args.model, args.translate, args.diarize)
+    transcript = transcribe(audio_file, model=args.model, translate=args.translate, diarize=args.diarize)
     
     # Print to terminal
     print("\n" + "="*20 + " TRANSCRIPT " + "="*20)
@@ -199,4 +196,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

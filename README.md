@@ -48,6 +48,35 @@ make all AUDIO=audio.wav
 
 ---
 
+## 🌐 API Server (FastAPI)
+
+For persistent model loading and instant transcription via HTTP:
+
+### 1. Start the Server
+
+```bash
+make server
+```
+
+The server loads models **once** at startup. Subsequent requests are instant.
+
+### 2. Access Swagger UI
+
+```bash
+make docs
+```
+
+Or visit: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+### 3. Example API Request
+
+```bash
+curl -X POST "http://localhost:8000/transcribe?translate=true&diarize=true" \
+  -F "file=@audio/multi_person.mp3"
+```
+
+---
+
 ## 🐳 Quick Start with Docker (Manual)
 
 If you don't have `make` installed:
@@ -81,18 +110,6 @@ docker compose run --rm whisper audio.wav --diarize
 
 ---
 
-## 💾 Offline Mode & Model Caching
-
-The system automatically caches models in the `models/` directory. Once a model is downloaded, you can run the system without an internet connection.
-
-### How to use Offline:
-
-1.  **First Run**: Run the system once while connected to the internet to download the models.
-2.  **Verify**: Check that the `models/` folder contains Whisper and SpeechBrain data.
-3.  **Run Offline**: Subsequent runs will use the cached files automatically.
-
----
-
 ## 🛠️ Local Installation (Manual)
 
 1. **Install FFmpeg**: `sudo apt update && sudo apt install ffmpeg libsndfile1`
@@ -113,12 +130,22 @@ The system automatically caches models in the `models/` directory. Once a model 
 
 - `--model`: Choose model size (`tiny`, `base`, `small`, `medium`, `large`). Default: `base`.
 - `--translate`: Translate non-English audio to English.
-- `--diarize`: Enable speaker diarization (uses SpeechBrain, no token needed).
+- `--diarize`: Enable speaker diarization (uses SpeechBrain).
 
 ---
 
-## ❓ Troubleshooting
+## 🧹 Code Quality
 
-### 403 Client Error during download
+We use **Ruff** for linting and formatting.
 
-If you see a 403 error, ensure you have a stable internet connection for the first run. The system uses open-source models from SpeechBrain and OpenAI. No Hugging Face tokens are required.
+### Check for issues
+
+```bash
+make lint
+```
+
+### Auto-format code
+
+```bash
+make format
+```

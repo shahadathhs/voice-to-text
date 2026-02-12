@@ -26,9 +26,11 @@ RUN mkdir transcripts
 
 # Copy the rest of the application code
 COPY transcribe.py .
+COPY server.py .
+COPY pyproject.toml .
 
-# Define the entry point for the container
-ENTRYPOINT ["python", "transcribe.py"]
+EXPOSE 8000
 
-# Default command (can be overridden)
-CMD ["--help"]
+# Define the default command (can be overridden)
+CMD ["python", "transcribe.py", "--help"]
+
