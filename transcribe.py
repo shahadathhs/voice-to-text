@@ -29,9 +29,14 @@ def save_transcript(text, filename):
         f.write(text)
     return file_path
 
+# SpeechBrain ECAPA expects 16 kHz mono; minimum duration for reliable embedding (ms)
+DIARIZE_SAMPLE_RATE = 16000
+MIN_SEGMENT_MS = 500
+
 def perform_diarization(audio_path, segments, device, classifier=None):
     """
-    Non-gated diarization using SpeechBrain embeddings and Clustering.
+    Non-gated diarization using SpeechBrain embeddings and clustering.
+    Audio is resampled to 16 kHz for the encoder; clustering uses cosine distance.
     """
     print("[*] Extracting speaker embeddings for diarization...")
     try:
@@ -40,7 +45,6 @@ def perform_diarization(audio_path, segments, device, classifier=None):
         from speechbrain.inference.speaker import EncoderClassifier
         
         if classifier is None:
-            # Load locally if not provided
             classifier = EncoderClassifier.from_hparams(
                 source="speechbrain/spkrec-ecapa-voxceleb",
                 run_opts={"device": device},
@@ -51,60 +55,65 @@ def perform_diarization(audio_path, segments, device, classifier=None):
         return None
 
     audio = AudioSegment.from_file(audio_path)
-    embeddings = []
-    valid_segments = []
+    # Resample to 16 kHz mono for SpeechBrain ECAPA (required for good embeddings)
+    if audio.frame_rate != DIARIZE_SAMPLE_RATE:
+        audio = audio.set_frame_rate(DIARIZE_SAMPLE_RATE)
+    if audio.channels > 1:
+        audio = audio.set_channels(1)
 
-    for seg in segments:
+    embeddings = []
+    valid_indices = []  # index into segments for each embedding
+
+    for i, seg in enumerate(segments):
         start_ms = int(seg['start'] * 1000)
         end_ms = int(seg['end'] * 1000)
-        
-        # Extract segment audio
         seg_audio = audio[start_ms:end_ms]
-        if len(seg_audio) < 100: # Skip very short segments
+        if len(seg_audio) < MIN_SEGMENT_MS:
             continue
-            
-        # Convert pydub audio to torch tensor
-        samples = np.array(seg_audio.get_array_of_samples()).astype(np.float32)
-        # Normalize
-        samples = samples / (2**15)
-        if seg_audio.channels > 1:
-            samples = samples.reshape((-1, seg_audio.channels)).mean(axis=1)
-            
+
+        samples = np.array(seg_audio.get_array_of_samples()).astype(np.float32) / (2**15)
         signal = torch.from_numpy(samples).to(device)
-        
+
         with torch.no_grad():
             emb = classifier.encode_batch(signal.unsqueeze(0))
             embeddings.append(emb.squeeze().cpu().numpy())
-            valid_segments.append(seg)
+            valid_indices.append(i)
 
     if not embeddings:
         return None
 
-    # Cluster embeddings
     embeddings = np.array(embeddings)
-    # Simple heuristic: if we have few segments, don't over-cluster
-    num_clusters = min(len(embeddings), 5) # Cap at 5 for small files
-    
-    # Use Agglomerative Clustering (Standard for cold-start diarization)
-    # We use 'cosine' distance as it's best for embeddings
+    # Stricter threshold = more speaker separation. 0.25–0.4 typical; 0.8 merged everyone.
     clustering = AgglomerativeClustering(
-        n_clusters=None, 
-        distance_threshold=0.8, # Adjust for sensitivity
-        metric='cosine', 
+        n_clusters=None,
+        distance_threshold=0.35,
+        metric='cosine',
         linkage='average'
     )
-    labels = clustering.fit_predict(embeddings)
+    cluster_labels = clustering.fit_predict(embeddings)
 
-    # Map labels to segments
+    # Build label per segment index (invalid segments get previous speaker)
+    seg_label = {}
+    last_label = 0
+    for idx, label in zip(valid_indices, cluster_labels):
+        seg_label[idx] = label
+        last_label = label
+    for i in range(len(segments)):
+        if i not in seg_label:
+            seg_label[i] = seg_label.get(i - 1, 0)
+
+    num_speakers = max(seg_label.values()) + 1
     diarization_map = []
-    for seg, label in zip(valid_segments, labels):
+    for i, seg in enumerate(segments):
+        label = seg_label.get(i, 0)
         diarization_map.append({
             'start': seg['start'],
             'end': seg['end'],
             'speaker': f"SPEAKER_{label:02d}",
             'text': seg['text'].strip()
         })
-    
+
+    print(f"[*] Diarization: {num_speakers} speaker(s) across {len(segments)} segments")
     return diarization_map
 
 def transcribe(audio_path, model="base", translate=False, diarize=False, device=None, classifier=None):

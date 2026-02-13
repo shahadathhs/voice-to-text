@@ -4,6 +4,8 @@ services:
     volumes:
       - .:/app/data
       - ./transcripts:/app/transcripts
+      # Persist Whisper, SpeechBrain & Hugging Face model caches (avoids re-download on restart)
+      - ./model-cache:/root/.cache
     working_dir: /app/data
     ports:
       - "8000:8000"

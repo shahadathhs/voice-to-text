@@ -23,13 +23,13 @@ make build
 ### 2. Run Basic Transcription
 
 ```bash
-make run AUDIO=audio.wav
+make run AUDIO=audio/mix.mp3
 ```
 
 ### 3. Translate to English (Includes Original Transcript)
 
 ```bash
-make translate AUDIO=audio.wav
+make translate AUDIO=audio/mix.mp3
 ```
 
 ### 4. Speaker Diarization
@@ -37,13 +37,13 @@ make translate AUDIO=audio.wav
 To identify different speakers and label the transcript (`SPEAKER_00: Hello`):
 
 ```bash
-make diarize AUDIO=audio.wav
+make diarize AUDIO=audio/mix.mp3
 ```
 
 ### 5. All-in-one (Transcribe + Translate + Diarize)
 
 ```bash
-make all AUDIO=audio.wav
+make all AUDIO=audio/mix.mp3
 ```
 
 ---
