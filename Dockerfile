@@ -27,6 +27,7 @@ RUN mkdir transcripts
 # Copy the rest of the application code
 COPY transcribe.py .
 COPY server.py .
+COPY voice_to_text/ ./voice_to_text/
 COPY pyproject.toml .
 
 EXPOSE 8000
