@@ -149,14 +149,12 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError(f"Input is not a file: {args.input}")
 
     # Validate diarize threshold
-    if args.diarize_threshold is not None:
-        if not 0.0 <= args.diarize_threshold <= 1.0:
-            raise ValueError("--diarize-threshold must be between 0.0 and 1.0")
+    if args.diarize_threshold is not None and not 0.0 <= args.diarize_threshold <= 1.0:
+        raise ValueError("--diarize-threshold must be between 0.0 and 1.0")
 
     # Validate max speakers
-    if args.max_speakers is not None:
-        if args.max_speakers < 1:
-            raise ValueError("--max-speakers must be at least 1")
+    if args.max_speakers is not None and args.max_speakers < 1:
+        raise ValueError("--max-speakers must be at least 1")
 
 
 async def transcribe_async(args: argparse.Namespace) -> int:

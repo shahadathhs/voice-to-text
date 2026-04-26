@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.core.config import settings
-from app.core.errors import AppException
+from app.core.errors import AppError
 from app.core.logger import logger
 from app.core.response import ResponseBuilder
 
@@ -33,7 +33,7 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             return response
-        except AppException as e:
+        except AppError as e:
             # Handle known application exceptions
             logger.warning(f"Application error: {e.message}")
             return JSONResponse(

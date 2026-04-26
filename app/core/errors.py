@@ -3,7 +3,7 @@
 from typing import Any
 
 
-class AppException(Exception):
+class AppError(Exception):
     """Base exception for application errors."""
 
     def __init__(
@@ -28,7 +28,7 @@ class AppException(Exception):
         super().__init__(self.message)
 
 
-class ValidationError(AppException):
+class ValidationError(AppError):
     """Validation error (422)."""
 
     def __init__(
@@ -50,7 +50,7 @@ class ValidationError(AppException):
         super().__init__(message, status_code=422, details=details)
 
 
-class BadRequestError(AppException):
+class BadRequestError(AppError):
     """Bad request error (400)."""
 
     def __init__(
@@ -61,7 +61,7 @@ class BadRequestError(AppException):
         super().__init__(message, status_code=400, details=details)
 
 
-class UnauthorizedError(AppException):
+class UnauthorizedError(AppError):
     """Unauthorized error (401)."""
 
     def __init__(
@@ -72,7 +72,7 @@ class UnauthorizedError(AppException):
         super().__init__(message, status_code=401, details=details)
 
 
-class ForbiddenError(AppException):
+class ForbiddenError(AppError):
     """Forbidden error (403)."""
 
     def __init__(
@@ -83,7 +83,7 @@ class ForbiddenError(AppException):
         super().__init__(message, status_code=403, details=details)
 
 
-class NotFoundError(AppException):
+class NotFoundError(AppError):
     """Not found error (404)."""
 
     def __init__(
@@ -105,7 +105,7 @@ class NotFoundError(AppException):
         super().__init__(message, status_code=404, details=details)
 
 
-class AudioFileError(AppException):
+class AudioFileError(AppError):
     """Audio file processing error (400)."""
 
     def __init__(
@@ -127,7 +127,7 @@ class AudioFileError(AppException):
         super().__init__(message, status_code=400, details=details)
 
 
-class TranscriptionError(AppException):
+class TranscriptionError(AppError):
     """Transcription processing error (500)."""
 
     def __init__(
@@ -138,7 +138,7 @@ class TranscriptionError(AppException):
         super().__init__(message, status_code=500, details=details)
 
 
-class ModelLoadError(AppException):
+class ModelLoadError(AppError):
     """Model loading error (500)."""
 
     def __init__(
@@ -160,7 +160,7 @@ class ModelLoadError(AppException):
         super().__init__(message, status_code=500, details=details)
 
 
-class ServiceUnavailableError(AppException):
+class ServiceUnavailableError(AppError):
     """Service unavailable error (503)."""
 
     def __init__(
@@ -182,7 +182,7 @@ class ServiceUnavailableError(AppException):
         super().__init__(message, status_code=503, details=details)
 
 
-class ConfigurationError(AppException):
+class ConfigurationError(AppError):
     """Configuration error (500)."""
 
     def __init__(

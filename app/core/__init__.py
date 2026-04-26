@@ -2,7 +2,7 @@
 
 from app.core.config import settings
 from app.core.errors import (
-    AppException,
+    AppError,
     AudioFileError,
     TranscriptionError,
     ValidationError,
@@ -10,7 +10,7 @@ from app.core.errors import (
 from app.core.logger import logger
 
 __all__ = [
-    "AppException",
+    "AppError",
     "AudioFileError",
     "TranscriptionError",
     "ValidationError",

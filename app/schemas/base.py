@@ -1,6 +1,6 @@
 """Base Pydantic schemas for request/response validation."""
 
-from typing import Any, Generic, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, Field
 
@@ -31,7 +31,7 @@ class MetaData(BaseModel):
     }
 
 
-class DataResponse(BaseModel, Generic[T]):
+class DataResponse[T](BaseModel):
     """Standard success response format."""
 
     status_code: int = Field(..., description="HTTP status code", ge=100, le=599)
@@ -105,7 +105,7 @@ class HealthResponse(BaseModel):
     }
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse[T](BaseModel):
     """Standard paginated response format."""
 
     status_code: int = Field(..., description="HTTP status code", ge=100, le=599)

@@ -73,7 +73,7 @@ class TranscriptionService:
                 self.models["classifier"] = EncoderClassifier.from_hparams(
                     source="speechbrain/spkrec-ecapa-voxceleb",
                     run_opts={"device": device},
-                    savedir=str(settings.model_cache_dir / "speechbrain"),
+                    savedir=str(Path(settings.model_cache_dir) / "speechbrain"),
                 )
 
             self._initialized = True
@@ -151,7 +151,7 @@ class TranscriptionService:
                         )
 
                 temp_filename = f"temp_{audio_file.filename}"
-                temp_path = settings.audio_dir / temp_filename
+                temp_path = Path(settings.audio_dir) / temp_filename
 
                 with temp_path.open("wb") as buffer:
                     shutil.copyfileobj(audio_file.file, buffer)
