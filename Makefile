@@ -84,7 +84,7 @@ pre-commit-update: ## Update pre-commit hooks
 # =============================================================================
 build: ## Build distribution packages
 	@echo "Building distribution packages..."
-	@$(RUN_CMD) build
+	@uv run python -m build
 	@echo "✓ Built packages in dist/"
 
 dev: ## Run in development mode with hot reload

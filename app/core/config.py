@@ -16,6 +16,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        validate_assignment=True,
     )
 
     # Application
@@ -34,8 +35,8 @@ class Settings(BaseSettings):
     max_file_size: int = Field(
         default=500 * 1024 * 1024, description="Max file size in bytes"
     )
-    allowed_formats: list[str] = Field(
-        default=["wav", "mp3", "ogg", "m4a", "flac", "aac"],
+    allowed_formats: str | list[str] = Field(
+        default="wav,mp3,ogg,m4a,flac,aac",
         description="Allowed audio formats",
     )
 
@@ -135,6 +136,15 @@ class Settings(BaseSettings):
             # Comma-separated format
             return [origin.strip() for origin in v.split(",")]
 
+    @field_validator("allowed_formats", mode="before")
+    @classmethod
+    def parse_allowed_formats(cls, v: str | list[str]) -> list[str]:
+        """Parse allowed formats from string or list."""
+        if isinstance(v, list):
+            return v
+        # Comma-separated format
+        return [f.strip() for f in v.split(",")]
+
     @property
     def is_dev(self) -> bool:
         """Check if running in development mode."""
@@ -166,11 +176,6 @@ class Settings(BaseSettings):
             base_dir = info.data.get("base_dir", Path.cwd())
             return base_dir / v if isinstance(base_dir, Path) else Path(base_dir) / v
         return v
-
-    class Config:
-        """Pydantic config."""
-
-        validate_assignment = True
 
 
 settings = Settings()

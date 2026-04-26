@@ -1,6 +1,7 @@
 """Middleware for enhanced error handling and request processing."""
 
 from collections.abc import Callable
+from typing import cast
 
 from fastapi import Request, Response, status
 from fastapi.responses import JSONResponse
@@ -32,28 +33,34 @@ class ErrorHandlingMiddleware(BaseHTTPMiddleware):
         """
         try:
             response = await call_next(request)
-            return response
+            return cast(Response, response)
         except AppError as e:
             # Handle known application exceptions
             logger.warning(f"Application error: {e.message}")
-            return JSONResponse(
-                content=ResponseBuilder.error(
-                    message=e.message,
+            return cast(
+                Response,
+                JSONResponse(
+                    content=ResponseBuilder.error(
+                        message=e.message,
+                        status_code=e.status_code,
+                        details=e.details,
+                        errors=e.errors if e.errors else None,
+                    ).model_dump(),
                     status_code=e.status_code,
-                    details=e.details,
-                    errors=e.errors if e.errors else None,
-                ).model_dump(),
-                status_code=e.status_code,
+                ),
             )
         except Exception as e:
             # Handle unexpected exceptions
             logger.exception(f"Unhandled exception: {e}")
-            return JSONResponse(
-                content=ResponseBuilder.internal_server_error(
-                    message="Internal server error",
-                    details={"error": str(e)} if settings.debug else None,
-                ).model_dump(),
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            return cast(
+                Response,
+                JSONResponse(
+                    content=ResponseBuilder.internal_server_error(
+                        message="Internal server error",
+                        details={"error": str(e)} if settings.debug else None,
+                    ).model_dump(),
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                ),
             )
 
 
@@ -85,7 +92,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             f"{request.method} {request.url.path} - Status: {response.status_code}"
         )
 
-        return response
+        return cast(Response, response)
 
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
@@ -113,4 +120,4 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 
         response.headers["X-Request-ID"] = request_id
 
-        return response
+        return cast(Response, response)

@@ -119,7 +119,7 @@ def perform_diarization(
         audio = audio.set_channels(1)
 
     chunks = _build_diarization_chunks(segments)
-    embeddings = []
+    embeddings_list = []
     chunk_meta = []
 
     for start_s, end_s, seg_idx in chunks:
@@ -134,13 +134,13 @@ def perform_diarization(
         signal = torch.from_numpy(samples).to(device)
         with torch.no_grad():
             emb = classifier.encode_batch(signal.unsqueeze(0))
-            embeddings.append(emb.squeeze().cpu().numpy())
+            embeddings_list.append(emb.squeeze().cpu().numpy())
             chunk_meta.append((start_s, end_s, seg_idx))
 
-    if not embeddings:
+    if not embeddings_list:
         return None
 
-    embeddings = np.array(embeddings)
+    embeddings = np.array(embeddings_list)
     n_emb = len(embeddings)
 
     if max_speakers is not None and max_speakers >= 1:

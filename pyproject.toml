@@ -19,6 +19,7 @@ dependencies = [
     # Core Transcription
     "openai-whisper",
     "setuptools-rust",
+    "build>=0.1.0",
 
     # Hugging Face Transformers
     "transformers>=4.40.0",
