@@ -24,24 +24,14 @@ jobs:
         with:
           python-version: '3.14'
 
-      - name: Install uv
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Install all dependencies
+        run: make install-deps
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ffmpeg libsndfile1
+      - name: Run linting
+        run: make lint
 
-      - name: Clean project
-        run: make clean
-
-      - name: Install dependencies
-        run: make install
-
-      - name: Run pre-commit hooks
-        run: make pre-commit-run
+      - name: Run type checking
+        run: make type-check
 
       - name: Run security scan
         run: make security
