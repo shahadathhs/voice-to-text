@@ -27,6 +27,23 @@ jobs:
       - name: Install all dependencies
         run: make install-deps
 
+      - name: Check if initial tag exists
+        id: check_tag
+        run: |
+          if git rev-parse v1.0.0 >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create initial tag if needed
+        if: steps.check_tag.outputs.exists == 'false'
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git tag -a v1.0.0 -m "Initial release v1.0.0"
+          git push origin v1.0.0
+
       - name: Run linting
         run: make lint
 

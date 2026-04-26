@@ -202,6 +202,8 @@ upload_to_pypi = false
 remove_dist = false
 commit_author = "github-actions <actions@github.com>"
 commit_parser = "conventional"
+major_on_zero = false
+no_git_verify = true
 
 # =============================================================================
 # PyTest Configuration (for future testing)
