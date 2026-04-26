@@ -30,7 +30,7 @@ dependencies = [
     "python-multipart>=0.0.26",
 
     # Data Handling & System
-    "numpy<2.0",
+    "numpy<3.0",
     "pandas",
 
     # Audio Processing
