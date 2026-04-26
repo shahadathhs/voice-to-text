@@ -43,9 +43,16 @@ def setup_logging() -> None:
             compression="zip",
         )
 
-    def handle_exception(exc: Exception) -> None:
+    def handle_exception(
+        exc_type: type[BaseException],
+        exc_value: BaseException,
+        exc_traceback: Any,
+    ) -> None:
         """Handle uncaught exceptions."""
-        _logger.exception(f"Uncaught exception: {exc}")
+        _logger.error(
+            f"Uncaught exception: {exc_value}",
+            exc_info=(exc_type, exc_value, exc_traceback),
+        )
 
     sys.excepthook = handle_exception
 

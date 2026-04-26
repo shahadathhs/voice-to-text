@@ -6,15 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from app.core.config import (
-    DIARIZE_SAMPLE_RATE,
-    MIN_CHUNK_MS,
-    MIN_SEGMENT_MS,
-    SMOOTHING_MAX_DURATION_S,
-    SUBSEGMENT_MIN_DURATION_S,
-    SUBSEGMENT_STRIDE_S,
-    SUBSEGMENT_WINDOW_S,
-)
+from app.core.config import settings
 
 
 def overlap(s1: float, e1: float, s2: float, e2: float) -> float:
@@ -36,7 +28,7 @@ def assign_speaker_by_overlap(
             speaker_overlap[sp] = speaker_overlap.get(sp, 0) + ov
     if not speaker_overlap:
         return "SPEAKER_00"
-    return max(speaker_overlap, key=speaker_overlap.get)
+    return max(speaker_overlap.items(), key=lambda x: x[1])[0]
 
 
 def _build_diarization_chunks(segments: list[dict[str, Any]]) -> list[tuple[float, float, int]]:
@@ -45,15 +37,15 @@ def _build_diarization_chunks(segments: list[dict[str, Any]]) -> list[tuple[floa
     for i, seg in enumerate(segments):
         start_s, end_s = seg["start"], seg["end"]
         dur = end_s - start_s
-        if dur >= SUBSEGMENT_MIN_DURATION_S:
+        if dur >= settings.SUBSEGMENT_MIN_DURATION_S:
             t = start_s
-            while t + SUBSEGMENT_WINDOW_S <= end_s:
-                chunks.append((t, t + SUBSEGMENT_WINDOW_S, i))
-                t += SUBSEGMENT_STRIDE_S
-            if t < end_s and (end_s - t) * 1000 >= MIN_CHUNK_MS:
-                chunks.append((max(t, end_s - SUBSEGMENT_WINDOW_S), end_s, i))
+            while t + settings.SUBSEGMENT_WINDOW_S <= end_s:
+                chunks.append((t, t + settings.SUBSEGMENT_WINDOW_S, i))
+                t += settings.SUBSEGMENT_STRIDE_S
+            if t < end_s and (end_s - t) * 1000 >= settings.MIN_CHUNK_MS:
+                chunks.append((max(t, end_s - settings.SUBSEGMENT_WINDOW_S), end_s, i))
         else:
-            if dur * 1000 >= MIN_SEGMENT_MS:
+            if dur * 1000 >= settings.MIN_SEGMENT_MS:
                 chunks.append((start_s, end_s, i))
     return chunks
 
@@ -61,7 +53,7 @@ def _build_diarization_chunks(segments: list[dict[str, Any]]) -> list[tuple[floa
 def _temporal_smooth_labels(
     segments: list[dict[str, Any]],
     seg_label: dict[int, int],
-    max_duration_s: float = SMOOTHING_MAX_DURATION_S,
+    max_duration_s: float = settings.SMOOTHING_MAX_DURATION_S,
 ) -> dict[int, int]:
     """Flip short segments that differ from both neighbors to reduce flickering."""
     n = len(segments)
@@ -114,8 +106,8 @@ def perform_diarization(
         )
 
     audio = AudioSegment.from_file(audio_path)
-    if audio.frame_rate != DIARIZE_SAMPLE_RATE:
-        audio = audio.set_frame_rate(DIARIZE_SAMPLE_RATE)
+    if audio.frame_rate != settings.DIARIZE_SAMPLE_RATE:
+        audio = audio.set_frame_rate(settings.DIARIZE_SAMPLE_RATE)
     if audio.channels > 1:
         audio = audio.set_channels(1)
 
@@ -127,7 +119,7 @@ def perform_diarization(
         start_ms = int(start_s * 1000)
         end_ms = int(end_s * 1000)
         seg_audio = audio[start_ms:end_ms]
-        if len(seg_audio) < MIN_CHUNK_MS:
+        if len(seg_audio) < settings.MIN_CHUNK_MS:
             continue
         samples = np.array(seg_audio.get_array_of_samples()).astype(np.float32) / (2**15)
         signal = torch.from_numpy(samples).to(device)
@@ -176,13 +168,14 @@ def perform_diarization(
 
     chunk_labels = clustering.fit_predict(embeddings)
 
-    seg_label: dict[int, list[int]] = {}
+    seg_label: dict[int, int] = {}
+    votes_by_seg: dict[int, list[int]] = {}
     for (_, _, seg_idx), label in zip(chunk_meta, chunk_labels):
-        if seg_idx not in seg_label:
-            seg_label[seg_idx] = []
-        seg_label[seg_idx].append(label)
-    for seg_idx in seg_label:
-        votes = seg_label[seg_idx]
+        if seg_idx not in votes_by_seg:
+            votes_by_seg[seg_idx] = []
+        votes_by_seg[seg_idx].append(label)
+    for seg_idx in votes_by_seg:
+        votes = votes_by_seg[seg_idx]
         seg_label[seg_idx] = Counter(votes).most_common(1)[0][0]
 
     chunk_centers = [

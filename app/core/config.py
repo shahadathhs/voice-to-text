@@ -32,9 +32,6 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0", description="Server host")
     port: int = Field(default=8000, description="Server port")
     workers: int = Field(default=1, description="Number of worker processes")
-
-    # API
-    api_prefix: str = Field(default="", description="API prefix")
     max_file_size: int = Field(default=500 * 1024 * 1024, description="Max file size in bytes")
     allowed_formats: list[str] = Field(
         default=["wav", "mp3", "ogg", "m4a", "flac", "aac"],
@@ -59,6 +56,9 @@ class Settings(BaseSettings):
         default="cpu", description="Whisper device"
     )
 
+    # Whisper Constants
+    WHISPER_BACKEND_DEFAULT: str = Field(default="openai", description="Default Whisper backend")
+
     # Features
     enable_translation: bool = Field(default=False, description="Enable translation")
     enable_diarization: bool = Field(default=False, description="Enable speaker diarization")
@@ -67,6 +67,15 @@ class Settings(BaseSettings):
     diarize_threshold: float = Field(default=0.35, description="Diarization threshold")
     max_speakers: int | None = Field(default=None, description="Maximum number of speakers")
     use_silhouette: bool = Field(default=False, description="Use silhouette analysis")
+
+    # Diarization Constants
+    DIARIZE_SAMPLE_RATE: int = Field(default=16000, description="Sample rate for diarization")
+    MIN_CHUNK_MS: int = Field(default=500, description="Minimum chunk duration in ms")
+    MIN_SEGMENT_MS: int = Field(default=1000, description="Minimum segment duration in ms")
+    SMOOTHING_MAX_DURATION_S: float = Field(default=2.0, description="Max duration for smoothing in seconds")
+    SUBSEGMENT_MIN_DURATION_S: float = Field(default=3.0, description="Min duration to use subsegments in seconds")
+    SUBSEGMENT_WINDOW_S: float = Field(default=1.5, description="Subsegment window size in seconds")
+    SUBSEGMENT_STRIDE_S: float = Field(default=0.5, description="Subsegment stride in seconds")
 
     # Logging
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
@@ -155,8 +164,6 @@ def ensure_directories() -> None:
 
     for directory in directories:
         directory.mkdir(parents=True, exist_ok=True)
-        if settings.debug:
-            logger.debug(f"Ensured directory exists: {directory}")
 
 
 # Initialize directories on import

@@ -124,7 +124,7 @@ exclude = [
 line-length = 88
 
 # Target Python 3.14
-target-version = "py314"
+target-version = "py313"
 
 [tool.ruff.per-file-ignores]
 "__init__.py" = ["E402"]  # Allow lazy imports in __init__

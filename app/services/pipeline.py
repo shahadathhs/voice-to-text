@@ -4,7 +4,7 @@ from typing import Any
 
 import torch
 
-from app.core.config import WHISPER_BACKEND_DEFAULT
+from app.core.config import settings
 from app.services.diarization import assign_speaker_by_overlap, perform_diarization
 from app.whisper import (
     load_openai_whisper,
@@ -35,7 +35,7 @@ def transcribe(
     classifier: Any = None,
     diarize_threshold: float = 0.35,
     max_speakers: int | None = None,
-    whisper_backend: str = WHISPER_BACKEND_DEFAULT,
+    whisper_backend: str = None,
     use_silhouette: bool = False,
 ) -> str:
     """
@@ -45,6 +45,9 @@ def transcribe(
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"[*] Using device: {device.upper()}")
+
+    if whisper_backend is None:
+        whisper_backend = settings.WHISPER_BACKEND_DEFAULT
 
     if isinstance(model, str):
         model_size = model

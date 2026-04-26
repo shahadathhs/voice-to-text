@@ -6,7 +6,7 @@ __version__ = "1.0.0"
 from app.main import app
 
 # Core transcription functionality
-from app.core.config import WHISPER_BACKEND_DEFAULT
+from app.core.config import settings
 from app.utils import get_unique_filename, save_transcript
 from app.services.pipeline import transcribe
 
@@ -19,7 +19,7 @@ __all__ = [
     # FastAPI app
     "app",
     # Core
-    "WHISPER_BACKEND_DEFAULT",
+    "settings",
     "get_unique_filename",
     "save_transcript",
     "transcribe",
