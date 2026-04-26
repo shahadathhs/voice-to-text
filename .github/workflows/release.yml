@@ -47,6 +47,13 @@ jobs:
         run: |
           git tag -a v1.0.0 -m "Initial release v1.0.0"
           git push origin v1.0.0
+          gh release create v1.0.0 --title "v1.0.0" --notes "Initial release
+
+          - FastAPI voice-to-text API with OpenAI Whisper
+          - Multiple audio formats support
+          - Translation and speaker diarization
+          - CLI and API interfaces
+          - Comprehensive documentation"
 
       - name: Run linting
         run: make lint
