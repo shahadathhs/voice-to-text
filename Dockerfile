@@ -1,37 +1,43 @@
-# Use a standard Python image (non-slim) for better build stability with large libraries
-FROM python:3.10-bookworm
+FROM python:3.14-slim
 
-# Set the working directory in the container
+# Set working directory
 WORKDIR /app
 
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    git \
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+    gcc \
     libsndfile1 \
+    ffmpeg \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Update pip to the latest version to prevent installation bugs
-RUN pip install --no-cache-dir --upgrade pip
+# Install uv
+RUN pip install --no-cache-dir uv
 
-# Copy requirements
-COPY requirements.txt .
+# Copy project files
+COPY pyproject.toml README.md ./
 
-# Install dependencies from requirements.txt
-ARG CACHEBUST=1
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies using uv
+RUN uv sync --no-dev
+
+# Copy application source
+COPY . .
 
 # Create transcripts directory
-RUN mkdir transcripts
+RUN mkdir -p /app/transcripts
 
-# Copy the rest of the application code
-COPY transcribe.py .
-COPY server.py .
-COPY voice_to_text/ ./voice_to_text/
-COPY pyproject.toml .
-
+# Expose port
 EXPOSE 8000
 
-# Define the default command (can be overridden)
-CMD ["python", "transcribe.py", "--help"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/docs || exit 1
 
+# Start command
+CMD ["uv", "run", "uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
