@@ -12,7 +12,7 @@ RUN_CMD := uv run
 .PHONY: lint lint-fix format format-check type-check check-all fix-all
 .PHONY: docker-build docker-down docker-rebuild docker-ps
 .PHONY: clean shell logs update freeze list add add-dev remove ci security info
-.PHONY: server stop restart logs docs status
+.PHONY: server stop restart logs docs status release-publish release-version
 
 .DEFAULT_GOAL := help
 
@@ -233,6 +233,14 @@ security: ## Run security scan with bandit
 
 ci: pre-commit-run security build ## Run CI pipeline checks
 	@echo "Running CI pipeline..."
+
+release-publish: ## Publish release with semantic-release
+	@echo "Publishing release..."
+	@$(RUN_CMD) semantic-release publish
+
+release-version: ## Bump version with semantic-release (no publish)
+	@echo "Bumping version..."
+	@$(RUN_CMD) semantic-release version --no-commit
 
 # =============================================================================
 # INFO
