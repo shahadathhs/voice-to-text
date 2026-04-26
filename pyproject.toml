@@ -30,13 +30,13 @@ dependencies = [
     "python-multipart>=0.0.26",
 
     # Data Handling & System
-    "numpy<2.0",
+    "numpy<3.0",
     "pandas",
 
     # Audio Processing
     "pydub",
     "speechbrain",
-    "huggingface-hub<0.26.0",
+    "huggingface-hub<1.13.0",
     "scikit-learn",
 
     # Configuration & Logging
@@ -62,9 +62,9 @@ dev = [
     "build>=1.4.3",
     "bandit>=1.9.4",
     "python-semantic-release>=10.5.3",
-    "ruff==0.15.11",
+    "ruff==0.15.12",
     "black==26.3.1",
-    "mypy==1.20.1",
+    "mypy==1.20.2",
     "types-requests",
 ]
 
