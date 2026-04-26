@@ -29,8 +29,8 @@ RUN uv sync --no-dev
 # Copy application source
 COPY . .
 
-# Create transcripts directory
-RUN mkdir -p /app/transcripts
+# Create media directories
+RUN mkdir -p /app/media/audio /app/media/transcripts /app/model-cache
 
 # Expose port
 EXPOSE 8000

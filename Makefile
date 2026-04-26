@@ -1,32 +1,9 @@
 # Voice-to-Text API - Makefile
 # Modern API-focused build system
 
-# Docker Variables
-DOCKER_IMAGE := voice-to-text:latest
+# Variables
 COMPOSE_FILE := compose.yaml
-
-# Python Variables
-VENV := .venv
-
-# Detect if UV is available
-HAS_UV := $(shell command -v uv 2> /dev/null && echo "yes" || echo "no")
-
-# Use UV if available, otherwise use standard Python
-ifeq ($(HAS_UV),yes)
-    PYTHON_BIN := uv run python
-    PIP_INSTALL := uv sync
-    VENV_CMD := uv venv
-    PACKAGE_CMD := uv add
-    PACKAGE_DEV_CMD := uv add --dev
-    RUN_CMD := uv run
-else
-    PYTHON_BIN := $(VENV)/bin/python
-    PIP_INSTALL := $(VENV)/bin/pip install -e .
-    VENV_CMD := python3 -m venv
-    PACKAGE_CMD := $(VENV)/bin/pip install
-    PACKAGE_DEV_CMD := $(VENV)/bin/pip install
-    RUN_CMD := $(VENV)/bin/python -m
-endif
+RUN_CMD := uv run
 
 # Phony targets
 .PHONY: help setup install-deps venv install reset-venv
@@ -60,30 +37,26 @@ install-deps: ## Install all system dependencies (UV, FFmpeg, Python packages)
 	@./setup.sh
 
 venv: ## Create virtual environment
-	@echo "Creating virtual environment..."
-	@rm -rf $(VENV) 2>/dev/null || true
-	@echo "Using: $(VENV_CMD)"
-	@$(VENV_CMD) $(VENV)
-	@echo "✓ Virtual environment created at $(VENV)"
-	@echo "Note: Using $(PYTHON_BIN)"
+	@echo "Creating virtual environment with UV..."
+	@uv venv
+	@echo "✓ Virtual environment created at .venv"
 
 reset-venv: ## Force reset virtual environment (fix permission issues)
 	@echo "Resetting virtual environment..."
-	@rm -rf $(VENV) .uv uv.lock 2>/dev/null || true
-	@$(VENV_CMD) $(VENV)
-	@$(PIP_INSTALL)
+	@rm -rf .venv .uv uv.lock 2>/dev/null || true
+	@uv venv
+	@uv sync
 	@echo "✓ Virtual environment reset complete"
 
 install: ## Install Python dependencies only
-	@echo "Installing Python dependencies..."
-	@echo "Using: $(PIP_INSTALL)"
-	@$(PIP_INSTALL)
+	@echo "Installing Python dependencies with UV..."
+	@uv sync
 	@echo "✓ Dependencies installed"
 
-setup: venv install pre-commit-install ## Full setup (venv + install + hooks)
+setup: install pre-commit-install ## Full setup (venv + install + hooks)
 	@echo "✓ Setup complete!"
-	@echo "Python: $(PYTHON_BIN)"
-	@echo "Virtual Environment: $(VENV)"
+	@echo "Python: uv run python"
+	@echo "Virtual Environment: .venv"
 	@echo ""
 	@echo "🎉 Ready to use!"
 	@echo ""
@@ -225,42 +198,30 @@ clean-transcripts: ## Clean transcripts folder only
 
 shell: ## Open Python shell with app context
 	@echo "Loading Python shell..."
-	@$(PYTHON_BIN) -i -c "from app import transcribe; print('Voice-to-Text loaded!')"
+	@uv run python -i -c "from app import transcribe; print('Voice-to-Text loaded!')"
 
 update: ## Update dependencies
 	@echo "Updating dependencies..."
-ifeq ($(HAS_UV),yes)
-	uv sync --upgrade
-else
-	$(VENV)/bin/pip install --upgrade -r requirements.txt
-endif
+	@uv sync --upgrade
 
 freeze: ## Update lock file
 	@echo "Updating lock file..."
-ifeq ($(HAS_UV),yes)
-	uv lock
-else
-	$(VENV)/bin/pip freeze > requirements.txt
-endif
+	@uv lock
 
 list: ## List installed dependencies
-	@$(PYTHON_BIN) -m pip list
+	@uv pip list
 
 add: ## Add a new package (use PKG=name)
 	@echo "Adding package: $(PKG)..."
-	@$(PACKAGE_CMD) $(PKG)
+	@uv add $(PKG)
 
 add-dev: ## Add a new dev package (use PKG=name)
 	@echo "Adding dev package: $(PKG)..."
-	@$(PACKAGE_DEV_CMD) $(PKG)
+	@uv add --dev $(PKG)
 
 remove: ## Remove a package (use PKG=name)
 	@echo "Removing package: $(PKG)..."
-ifeq ($(HAS_UV),yes)
-	uv remove $(PKG)
-else
-	$(VENV)/bin/pip uninstall $(PKG)
-endif
+	@uv remove $(PKG)
 
 # =============================================================================
 # CI/CD
@@ -282,14 +243,12 @@ info: ## Show project information
 	@echo "Python: $$(python3 --version)"
 	@echo "Environment: $${ENVIRONMENT:-development}"
 	@echo ""
-	@echo "Package Manager:"
-	@echo "  UV Available: $(HAS_UV)"
-	@echo "  Python Bin: $(PYTHON_BIN)"
-	@echo "  Virtual Env: $(VENV)"
+	@echo "Package Manager: UV"
+	@echo "  Virtual Env: .venv"
 	@echo ""
 	@echo "Quick Start:"
 	@echo "  ./setup.sh              - Complete setup (recommended)"
-	@echo "  make install-deps       - Install UV, FFmpeg, and dependencies"
+	@echo "  make install-deps       - Install FFmpeg and Python dependencies"
 	@echo "  make setup              - Quick setup (Python only)"
 	@echo "  make server             - Start API server"
 	@echo "  make dev                - Development mode"

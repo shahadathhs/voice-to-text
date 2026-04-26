@@ -10,12 +10,18 @@
 - [Overview](#-overview)
 - [Features](#-features)
 - [Architecture](#-architecture)
-- [Quick Start](#-quick-start)
 - [Project Structure](#-project-structure)
+- [Quick Start](#-quick-start)
+- [API Server](#-api-server)
+- [Configuration](#️-configuration)
+- [Output Format](#-output-format)
+- [Code Quality](#-code-quality)
 - [Development](#-development)
-- [API Documentation](#-api-documentation)
+- [Docker Deployment](#-docker-deployment)
+- [Troubleshooting](#-troubleshooting)
 - [Contributing](#-contributing)
 - [License](#-license)
+- [Roadmap](#-roadmap)
 
 ---
 
@@ -24,10 +30,6 @@
 **Voice-to-Text** is a **fully local** AI-powered voice transcription system using OpenAI's Whisper (open-source). All models run on your machine—no API keys, no cloud calls, audio never leaves your device. Supports **translation**, **speaker diarization**, and multiple **Whisper backends**.
 
 ---
-
-## Features
-
-A **fully local** AI-powered voice transcription system using OpenAI's Whisper (open-source). All models run on your machine—no API keys, no cloud calls, audio never leaves your device. Supports **translation**, **speaker diarization**, and multiple **Whisper backends**.
 
 ## ✨ Features
 
@@ -41,105 +43,6 @@ A **fully local** AI-powered voice transcription system using OpenAI's Whisper (
 - 📊 **Smart Clustering**: Sub-segments, temporal smoothing, silhouette analysis
 - 📁 **Unified Media Storage**: Organized media folder structure for audio and transcripts
 - 🔒 **Fully Local**: No data sent to cloud, complete privacy
-
-- 🖥️ **CLI Interface**: Command-line tool for local transcription
-- 🌐 **FastAPI Server**: REST API with persistent model loading
-- 🔄 **Dual Mode**: Use as standalone CLI or deploy as API server
-- 🌍 **Translation**: Translate non-English audio to English (includes original)
-- 👥 **Speaker Diarization**: Identify and label different speakers (token-free)
-- 🔧 **Multiple Backends**: OpenAI Whisper or Hugging Face Transformers
-- 🐳 **Docker Support**: Easy containerization and deployment
-- 📊 **Smart Clustering**: Sub-segments, temporal smoothing, silhouette analysis
-
-## 🏗️ Architecture
-
-### Overview
-
-```
-Audio Input → Whisper (ASR) → Segments → Diarization/Translation → Output
-                                    ↓
-                            SpeechBrain ECAPA
-                            (speaker embeddings)
-```
-
-### Data Flow
-
-1. **Input**: Audio file (WAV, MP3, OGG, M4A, FLAC, AAC)
-2. **Whisper**: Load model → transcribe task → segments `[{start, end, text}]`
-3. **Diarization**: Extract SpeechBrain ECAPA embeddings → cluster → assign `SPEAKER_XX` → temporal smoothing
-4. **Translation**: Run Whisper with `translate` task → map speakers via time overlap
-5. **Output**: Combined text saved to `transcripts/`
-
-### Backends
-
-- **OpenAI Whisper** (default): Uses the `whisper` package
-- **Transformers**: Hugging Face `automatic-speech-recognition` pipeline with `openai/whisper-*`
-
-Both run locally with identical segment format. Switch via `--whisper-backend` or `WHISPER_BACKEND` env var.
-
-### Diarization Algorithm
-
-- **Sub-segments**: Long segments (>3s) split into sliding windows (1.5s window, 0.5s stride)
-- **Embeddings**: One SpeechBrain ECAPA embedding per window
-- **Segment label**: Majority vote of its windows
-- **Short segments**: Label from temporally nearest embedded chunk
-- **Smoothing**: Segments <2s that differ from both neighbors are flipped to previous label
-- **Clustering**: AgglomerativeClustering (cosine distance)
-
-## 📁 Project Structure
-
-```
-voice-to-text/
-├── app/                       # Main application package
-│   ├── __init__.py           # Package exports
-│   ├── main.py               # FastAPI application
-│   ├── api/                  # REST API layer
-│   │   ├── __init__.py
-│   │   └── routes.py        # API endpoints
-│   ├── cli/                  # CLI interface
-│   │   ├── __init__.py
-│   │   └── main.py          # CLI entry point
-│   ├── core/                 # Core functionality
-│   │   ├── __init__.py
-│   │   ├── config.py        # Configuration (Pydantic Settings)
-│   │   ├── errors.py        # Custom exceptions
-│   │   └── logger.py        # Logging setup
-│   ├── services/             # Business logic layer
-│   │   ├── __init__.py
-│   │   ├── diarization.py   # Speaker diarization
-│   │   ├── pipeline.py      # Transcription orchestration
-│   │   └── transcriber.py   # Transcription service
-│   ├── utils/                # Utility functions
-│   │   ├── __init__.py
-│   │   └── io_utils.py      # File I/O operations
-│   └── whisper/              # Whisper implementations
-│       ├── __init__.py
-│       ├── openai_whisper.py    # OpenAI backend
-│       └── transformers_whisper.py # HuggingFace backend
-├── audio/                     # Input audio files
-├── transcripts/               # Output transcripts (auto-created)
-├── cli.py                     # CLI entry point
-├── server.py                  # Server entry point
-├── pyproject.toml            # UV package manager config
-├── Makefile                   # Automation commands
-├── compose.yaml               # Docker Compose setup
-├── Dockerfile                 # Production container image
-└── .claude/                   # Development guide
-    └── CLAUDE.md             # AI development documentation
-```
-
-### Module Responsibilities
-
-| Layer | Purpose |
-|-------|---------|
-| **Core** | Configuration, errors, logging |
-| **Services** | Business logic, orchestration, diarization |
-| **Utils** | File I/O, helper functions |
-| **Whisper** | Model implementations, backends |
-| **API** | HTTP endpoints, request handling |
-| **CLI** | Command-line interface, argument parsing |
-
----
 
 ## 🏗️ Architecture
 
@@ -167,6 +70,15 @@ Audio Input → Whisper (ASR) → Segments → Diarization/Translation → Outpu
 
 Both run locally with identical segment format. Switch via `--whisper-backend` or `WHISPER_BACKEND` env var.
 
+### Diarization Algorithm
+
+- **Sub-segments**: Long segments (>3s) split into sliding windows (1.5s window, 0.5s stride)
+- **Embeddings**: One SpeechBrain ECAPA embedding per window
+- **Segment label**: Majority vote of its windows
+- **Short segments**: Label from temporally nearest embedded chunk
+- **Smoothing**: Segments <2s that differ from both neighbors are flipped to previous label
+- **Clustering**: AgglomerativeClustering (cosine distance)
+
 ### Technology Stack
 
 ```python
@@ -189,8 +101,6 @@ bandit>=1.9.4            # Security scanning
 pre-commit>=4.5.1        # Git hooks
 ```
 
----
-
 ## 📁 Project Structure
 
 ```
@@ -200,7 +110,9 @@ voice-to-text/
 │   ├── main.py               # FastAPI application
 │   ├── api/                  # REST API layer
 │   │   ├── __init__.py
-│   │   └── routes.py        # API endpoints with Swagger docs
+│   │   ├── routes.py        # API endpoints with Swagger docs
+│   │   ├── services.py      # API business logic
+│   │   └── docs.py          # API documentation helpers
 │   ├── cli/                  # CLI interface
 │   │   ├── __init__.py
 │   │   └── main.py          # CLI entry point
@@ -271,41 +183,25 @@ make build
 
 #### Basic Transcription
 ```bash
-make run AUDIO=audio/mix.mp3
+make run AUDIO=media/audio/mix.mp3
 ```
 
 #### Translate to English
 ```bash
-make translate AUDIO=audio/mix.mp3
+make translate AUDIO=media/audio/mix.mp3
 ```
 
 #### Speaker Diarization
 ```bash
-make diarize AUDIO=audio/multi_person.mp3
+make diarize AUDIO=media/audio/multi_person.mp3
 ```
 
 #### All Features Combined
 ```bash
-make all AUDIO=audio/multi_person.mp3
+make all AUDIO=media/audio/multi_person.mp3
 ```
 
-### Option 2: Using Docker Compose (Manual)
-
-```bash
-# Build
-docker compose build
-
-# Basic
-docker compose run --rm whisper audio.wav
-
-# With translation
-docker compose run --rm whisper audio.wav --translate
-
-# With diarization
-docker compose run --rm whisper audio.wav --diarize
-```
-
-### Option 3: Local Installation
+### Option 2: Local Installation
 
 #### Using UV (Recommended - 10-100x faster)
 
@@ -329,21 +225,6 @@ uv run python cli.py audio.wav --translate --diarize
 make dev
 # Or manually:
 uv run python -m uvicorn server:app --reload --host 0.0.0.0 --port 8000
-```
-
-#### Using pip (Legacy - Deprecated)
-
-```bash
-# 1. Install FFmpeg
-sudo apt update && sudo apt install ffmpeg libsndfile1
-
-# 2. Setup environment
-python3 -m venv venv
-source venv/bin/activate
-pip install -e .
-
-# 3. Run
-python3 cli.py audio.wav --translate --diarize
 ```
 
 ---
@@ -521,7 +402,7 @@ SPEAKER_01: Very well, thank you!
 
 ### File Naming
 
-Transcripts are saved to `transcripts/` with unique filenames:
+Transcripts are saved to `media/transcripts/` with unique filenames:
 ```
 audio_20260426_083000.txt
 ```
@@ -608,8 +489,7 @@ make stop
 
 ### Docker Compose Services
 
-- **whisper**: Main CLI application
-- **api**: FastAPI server (when using `make server`)
+- **api**: FastAPI server with automatic transcription
 
 ---
 
@@ -625,8 +505,11 @@ make stop
 ### Model Issues
 
 ```bash
-# Clear model cache
+# Clear model cache (local)
 rm -rf model-cache/
+
+# Clear Docker volume
+docker volume rm voice-to-text_model-cache
 
 # Test with smaller model
 WHISPER_MODEL=tiny make dev
@@ -654,35 +537,6 @@ make setup
 
 # Clear Python cache
 find . -type d -name __pycache__ -exec rm -rf {} +
-```
-
----
-
-## 📋 Requirements
-
-### Core Dependencies
-
-```
-fastapi>=0.115.0          # Web framework
-uvicorn[standard]>=0.32.0 # ASGI server
-pydantic>=2.0            # Data validation
-pydantic-settings>=2.0   # Configuration management
-openai-whisper           # Transcription model
-transformers>=4.40.0     # Hugging Face transformers
-speechbrain              # Speaker diarization
-loguru>=0.7.0            # Logging
-pydub                    # Audio processing
-```
-
-### Development Tools
-
-```
-uv                        # Package manager (10-100x faster)
-ruff==0.15.11            # Linting and formatting
-black==26.3.1            # Code formatting
-mypy==1.20.1             # Type checking
-bandit>=1.9.4            # Security scanning
-pre-commit>=4.5.1        # Git hooks
 ```
 
 ---

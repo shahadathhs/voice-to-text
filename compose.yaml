@@ -1,7 +1,7 @@
 services:
-  whisper:
+  api:
     build: .
-    container_name: voice-to-text-api
+    container_name: ${PACKAGE_NAME}-api
     ports:
       - "8000:8000"
     env_file:
@@ -9,14 +9,10 @@ services:
     environment:
       - PYTHONPATH=/app
     volumes:
-      # Mount audio directory for input files
-      - ./audio:/app/audio:ro
-      # Mount transcripts directory for output files
-      - ./transcripts:/app/transcripts
-      # Persist model caches (avoids re-download on restart)
-      - ./model-cache:/root/.cache
-      # Mount source code for development (hot reload)
-      - .:/app
+      # Mount media directory (contains audio and transcripts)
+      - ./media:/app/media
+      # Persist model cache (avoids re-download on restart)
+      - model-cache:/app/model-cache
     working_dir: /app
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/docs || exit 1"]
@@ -24,7 +20,7 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
-    command: uv run uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+    command: uv run uvicorn server:app --host 0.0.0.0 --port 8000
 
 volumes:
   model-cache:
