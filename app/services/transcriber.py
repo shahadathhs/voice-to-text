@@ -13,9 +13,10 @@ from app.core.errors import AudioFileError, ModelLoadError, TranscriptionError
 from app.core.logger import logger
 
 try:
-    from app.whisper import load_openai_whisper, load_transformers_whisper
-    from app.utils import get_unique_filename, save_transcript
     from app.services.pipeline import transcribe as legacy_transcribe
+    from app.utils import get_unique_filename, save_transcript
+    from app.whisper import load_openai_whisper, load_transformers_whisper
+
     LEGACY_AVAILABLE = True
 except ImportError as e:
     logger.warning(f"Legacy app package not available: {e}")
@@ -47,7 +48,9 @@ class TranscriptionService:
             if settings.whisper_backend == "transformers":
                 if not LEGACY_AVAILABLE:
                     raise ModelLoadError("Transformers backend not available")
-                logger.info(f"Loading Transformers Whisper ({settings.whisper_model})...")
+                logger.info(
+                    f"Loading Transformers Whisper ({settings.whisper_model})..."
+                )
                 self.models["whisper"] = load_transformers_whisper(
                     settings.whisper_model, device
                 )
@@ -78,7 +81,7 @@ class TranscriptionService:
 
         except Exception as e:
             logger.error(f"Failed to initialize transcription service: {e}")
-            raise ModelLoadError(f"Failed to initialize models: {e}")
+            raise ModelLoadError(f"Failed to initialize models: {e}") from e
 
     def health_check(self) -> dict[str, Any]:
         """Check service health.
@@ -89,7 +92,9 @@ class TranscriptionService:
         return {
             "status": "ok" if self._initialized else "not_initialized",
             "device": self.models.get("device", "unknown"),
-            "whisper_backend": self.models.get("whisper_backend", settings.whisper_backend),
+            "whisper_backend": self.models.get(
+                "whisper_backend", settings.whisper_backend
+            ),
             "model_size": settings.whisper_model,
             "features": {
                 "translation": settings.enable_translation,
@@ -178,7 +183,9 @@ class TranscriptionService:
                     classifier=self.models.get("classifier"),
                     diarize_threshold=diarize_threshold,
                     max_speakers=max_speakers or settings.max_speakers,
-                    whisper_backend=self.models.get("whisper_backend", settings.whisper_backend),
+                    whisper_backend=self.models.get(
+                        "whisper_backend", settings.whisper_backend
+                    ),
                     use_silhouette=use_silhouette or settings.use_silhouette,
                 )
             else:
@@ -194,7 +201,9 @@ class TranscriptionService:
                 "saved_to": str(saved_path),
                 "metadata": {
                     "model": settings.whisper_model,
-                    "backend": self.models.get("whisper_backend", settings.whisper_backend),
+                    "backend": self.models.get(
+                        "whisper_backend", settings.whisper_backend
+                    ),
                     "device": self.models.get("device", "unknown"),
                     "translated": translate or settings.enable_translation,
                     "diarized": diarize or settings.enable_diarization,
@@ -206,7 +215,7 @@ class TranscriptionService:
             raise
         except Exception as e:
             logger.error(f"Transcription failed: {e}", exc_info=True)
-            raise TranscriptionError(f"Transcription failed: {e}")
+            raise TranscriptionError(f"Transcription failed: {e}") from e
 
         finally:
             # Cleanup temp file

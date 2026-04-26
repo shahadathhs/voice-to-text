@@ -1,6 +1,5 @@
 """Request validation schemas for API endpoints."""
 
-from typing import Optional
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -15,7 +14,7 @@ class TranscriptionValidateQuery(BaseModel):
         le=1.0,
         description="Clustering threshold for speaker diarization (0.0-1.0)",
     )
-    max_speakers: Optional[int] = Field(
+    max_speakers: int | None = Field(
         default=None,
         ge=1,
         description="Fixed number of speakers (overrides diarize_threshold)",

@@ -8,9 +8,9 @@ from app.schemas.base import (
     PaginatedResponse,
 )
 from app.schemas.transcription import (
+    TranscriptionMetadata,
     TranscriptionRequest,
     TranscriptionResponse,
-    TranscriptionMetadata,
 )
 from app.schemas.validation import (
     AudioFileValidation,
@@ -18,17 +18,14 @@ from app.schemas.validation import (
 )
 
 __all__ = [
-    # Base schemas
+    "AudioFileValidation",
     "DataResponse",
     "ErrorResponse",
     "HealthResponse",
     "MetaData",
     "PaginatedResponse",
-    # Transcription schemas
+    "TranscriptionMetadata",
     "TranscriptionRequest",
     "TranscriptionResponse",
-    "TranscriptionMetadata",
-    # Validation schemas
-    "AudioFileValidation",
     "TranscriptionValidateQuery",
 ]

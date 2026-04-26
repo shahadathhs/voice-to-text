@@ -5,12 +5,16 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import router
 from app.api import docs
-from app.core.config import settings, ensure_directories
+from app.api.routes import router
+from app.core.config import ensure_directories, settings
 from app.core.logger import logger
-from app.core.middleware import ErrorHandlingMiddleware, LoggingMiddleware, RequestContextMiddleware
-from app.services.transcriber import lifespan_manager, transcription_service
+from app.core.middleware import (
+    ErrorHandlingMiddleware,
+    LoggingMiddleware,
+    RequestContextMiddleware,
+)
+from app.services.transcriber import lifespan_manager
 
 
 @asynccontextmanager
@@ -124,7 +128,7 @@ async def global_exception_handler(request, exc):
             details={
                 "exception": type(exc).__name__,
                 "request_path": str(request.url),
-            }
+            },
         ).model_dump()
     else:
         # Generic error in production

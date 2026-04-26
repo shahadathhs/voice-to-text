@@ -1,8 +1,10 @@
 """Response Builder - Standardized API response creation."""
 
-from typing import Any, Optional, TypeVar, Generic
+from typing import Any, TypeVar
+
 from fastapi import status
-from app.schemas.base import DataResponse, ErrorResponse, PaginatedResponse, MetaData
+
+from app.schemas.base import DataResponse, ErrorResponse, MetaData, PaginatedResponse
 
 T = TypeVar("T")
 
@@ -15,7 +17,7 @@ class ResponseBuilder:
         data: T,
         message: str = "Success",
         status_code: int = status.HTTP_200_OK,
-        metadata: Optional[MetaData] = None,
+        metadata: MetaData | None = None,
     ) -> DataResponse[T]:
         """
         Create a success response.
@@ -66,8 +68,8 @@ class ResponseBuilder:
     def error(
         message: str,
         status_code: int = status.HTTP_500_INTERNAL_SERVER_ERROR,
-        errors: Optional[list[Any]] = None,
-        details: Optional[dict[str, Any]] = None,
+        errors: list[Any] | None = None,
+        details: dict[str, Any] | None = None,
     ) -> ErrorResponse:
         """
         Create an error response.
@@ -92,7 +94,7 @@ class ResponseBuilder:
     @staticmethod
     def bad_request(
         message: str = "Bad request",
-        errors: Optional[list[Any]] = None,
+        errors: list[Any] | None = None,
     ) -> ErrorResponse:
         """Create a 400 Bad Request response."""
         return ResponseBuilder.error(
@@ -124,7 +126,7 @@ class ResponseBuilder:
     @staticmethod
     def not_found(
         message: str = "Resource not found",
-        details: Optional[dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> ErrorResponse:
         """Create a 404 Not Found response."""
         return ResponseBuilder.error(
@@ -148,7 +150,7 @@ class ResponseBuilder:
     @staticmethod
     def internal_server_error(
         message: str = "Internal server error",
-        details: Optional[dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ) -> ErrorResponse:
         """Create a 500 Internal Server Error response."""
         return ResponseBuilder.error(

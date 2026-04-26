@@ -11,7 +11,7 @@ from app.whisper.transformers_whisper import (
 
 __all__ = [
     "load_openai_whisper",
-    "transcribe_openai",
     "load_transformers_whisper",
+    "transcribe_openai",
     "transcribe_transformers",
 ]

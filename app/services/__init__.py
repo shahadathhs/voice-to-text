@@ -6,17 +6,18 @@ from app.services.diarization import (
     perform_diarization,
 )
 from app.services.pipeline import transcribe
-from app.services.transcriber import TranscriptionService, lifespan_manager, transcription_service
+from app.services.transcriber import (
+    TranscriptionService,
+    lifespan_manager,
+    transcription_service,
+)
 
 __all__ = [
-    # Diarization
+    "TranscriptionService",
     "assign_speaker_by_overlap",
+    "lifespan_manager",
     "overlap",
     "perform_diarization",
-    # Pipeline
     "transcribe",
-    # Transcriber
-    "TranscriptionService",
-    "lifespan_manager",
     "transcription_service",
 ]

@@ -8,6 +8,7 @@ from typing import Any
 def load_openai_whisper(model_size: str, device: str) -> Any:
     """Load OpenAI Whisper model."""
     import whisper
+
     return whisper.load_model(model_size, device=device)
 
 

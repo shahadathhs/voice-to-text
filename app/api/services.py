@@ -3,9 +3,10 @@
 from typing import Any
 
 from app.core.config import settings
-from app.core.errors import AudioFileError, TranscriptionError
 from app.core.logger import logger
-from app.services.transcriber import TranscriptionService, lifespan_manager, transcription_service
+from app.services.transcriber import (
+    transcription_service,
+)
 
 
 class TranscriptionAPIService:

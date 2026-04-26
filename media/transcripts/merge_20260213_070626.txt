@@ -212,7 +212,7 @@ SPEAKER_13: Right by John Peck and Martin Coil.
 SPEAKER_109: Publish by Paul Grave McMillan.
 SPEAKER_23: Hello.
 SPEAKER_43: Today we will talk about beauty standard or very different ways of writing.
-SPEAKER_132: 
+SPEAKER_132:
 SPEAKER_226: But changes don't really make it seem to me,
 SPEAKER_12: Oh, you're right.
 SPEAKER_12: Indeed,

@@ -31,7 +31,9 @@ def assign_speaker_by_overlap(
     return max(speaker_overlap.items(), key=lambda x: x[1])[0]
 
 
-def _build_diarization_chunks(segments: list[dict[str, Any]]) -> list[tuple[float, float, int]]:
+def _build_diarization_chunks(
+    segments: list[dict[str, Any]],
+) -> list[tuple[float, float, int]]:
     """Build (start_s, end_s, segment_idx) for embedding extraction. Long segments use sliding windows."""
     chunks = []
     for i, seg in enumerate(segments):
@@ -69,7 +71,12 @@ def _temporal_smooth_labels(
             prev_l = seg_label.get(i - 1) if i > 0 else None
             next_l = seg_label.get(i + 1) if i < n - 1 else None
             cur_l = seg_label[i]
-            if prev_l is not None and next_l is not None and prev_l == next_l and cur_l != prev_l:
+            if (
+                prev_l is not None
+                and next_l is not None
+                and prev_l == next_l
+                and cur_l != prev_l
+            ):
                 seg_label[i] = prev_l
                 changed = True
     return seg_label
@@ -121,7 +128,9 @@ def perform_diarization(
         seg_audio = audio[start_ms:end_ms]
         if len(seg_audio) < settings.MIN_CHUNK_MS:
             continue
-        samples = np.array(seg_audio.get_array_of_samples()).astype(np.float32) / (2**15)
+        samples = np.array(seg_audio.get_array_of_samples()).astype(np.float32) / (
+            2**15
+        )
         signal = torch.from_numpy(samples).to(device)
         with torch.no_grad():
             emb = classifier.encode_batch(signal.unsqueeze(0))
@@ -143,9 +152,12 @@ def perform_diarization(
         )
     elif use_silhouette and n_emb >= 4:
         from sklearn.metrics import silhouette_score
+
         best_k, best_score = 2, -1.0
         for k in range(2, min(11, n_emb)):
-            c = AgglomerativeClustering(n_clusters=k, metric="cosine", linkage="average")
+            c = AgglomerativeClustering(
+                n_clusters=k, metric="cosine", linkage="average"
+            )
             labels = c.fit_predict(embeddings)
             if len(set(labels)) < k:
                 continue
@@ -170,7 +182,7 @@ def perform_diarization(
 
     seg_label: dict[int, int] = {}
     votes_by_seg: dict[int, list[int]] = {}
-    for (_, _, seg_idx), label in zip(chunk_meta, chunk_labels):
+    for (_, _, seg_idx), label in zip(chunk_meta, chunk_labels, strict=False):
         if seg_idx not in votes_by_seg:
             votes_by_seg[seg_idx] = []
         votes_by_seg[seg_idx].append(label)
@@ -179,7 +191,8 @@ def perform_diarization(
         seg_label[seg_idx] = Counter(votes).most_common(1)[0][0]
 
     chunk_centers = [
-        ((s + e) / 2, seg_idx, lab) for (s, e, seg_idx), lab in zip(chunk_meta, chunk_labels)
+        ((s + e) / 2, seg_idx, lab)
+        for (s, e, seg_idx), lab in zip(chunk_meta, chunk_labels, strict=False)
     ]
     for i in range(len(segments)):
         if i in seg_label:
@@ -188,7 +201,7 @@ def perform_diarization(
         center_i = (seg["start"] + seg["end"]) / 2
         best_label = 0
         best_dist = float("inf")
-        for (center_j, _, label) in chunk_centers:
+        for center_j, _, label in chunk_centers:
             d = abs(center_i - center_j)
             if d < best_dist:
                 best_dist = d
@@ -201,12 +214,14 @@ def perform_diarization(
     diarization_map = []
     for i, seg in enumerate(segments):
         label = seg_label.get(i, 0)
-        diarization_map.append({
-            "start": seg["start"],
-            "end": seg["end"],
-            "speaker": f"SPEAKER_{label:02d}",
-            "text": seg["text"].strip(),
-        })
+        diarization_map.append(
+            {
+                "start": seg["start"],
+                "end": seg["end"],
+                "speaker": f"SPEAKER_{label:02d}",
+                "text": seg["text"].strip(),
+            }
+        )
 
     print(f"[*] Diarization: {num_speakers} speaker(s) across {len(segments)} segments")
     return diarization_map

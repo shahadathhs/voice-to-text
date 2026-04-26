@@ -17,17 +17,17 @@ RAPIDOC_HTML = """
     <title>RapiDoc - Voice-to-Text API</title>
     <script src="https://cdn.jsdelivr.net/npm/rapidoc/dist/rapidoc-min.js"></script>
     <style>
-        body {
+        body {{
             margin: 0;
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-        }
-        rapi-doc {
+        }}
+        rapi-doc {{
             height: 100vh;
             width: 100%;
             display: flex;
             flex-direction: column;
-        }
+        }}
     </style>
 </head>
 <body>
@@ -71,7 +71,7 @@ RAPIDOC_HTML = """
 """
 
 
-DOCS_HUB_HTML = """
+DOCS_HUB_HTML = f"""
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -79,13 +79,13 @@ DOCS_HUB_HTML = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Documentation Hub - Voice-to-Text API</title>
     <style>
-        * {
+        * {{
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
+        }}
 
-        body {
+        body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
@@ -93,41 +93,41 @@ DOCS_HUB_HTML = """
             align-items: center;
             justify-content: center;
             padding: 20px;
-        }
+        }}
 
-        .container {
+        .container {{
             max-width: 1200px;
             width: 100%;
-        }
+        }}
 
-        .header {
+        .header {{
             text-align: center;
             color: white;
             margin-bottom: 60px;
-        }
+        }}
 
-        .header h1 {
+        .header h1 {{
             font-size: 3rem;
             margin-bottom: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 16px;
-        }
+        }}
 
-        .header p {
+        .header p {{
             font-size: 1.25rem;
             opacity: 0.9;
-        }
+        }}
 
-        .grid {
+        .grid {{
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 24px;
             margin-bottom: 40px;
-        }
+        }}
 
-        .card {
+        .card {{
             background: white;
             border-radius: 16px;
             padding: 32px;
@@ -137,78 +137,78 @@ DOCS_HUB_HTML = """
             text-decoration: none;
             color: inherit;
             display: block;
-        }
+        }}
 
-        .card:hover {
+        .card:hover {{
             transform: translateY(-8px);
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-        }
+        }}
 
-        .card-icon {
+        .card-icon {{
             font-size: 3rem;
             margin-bottom: 16px;
-        }
+        }}
 
-        .card-title {
+        .card-title {{
             font-size: 1.5rem;
             font-weight: 600;
             margin-bottom: 12px;
             color: #1a202c;
-        }
+        }}
 
-        .card-description {
+        .card-description {{
             font-size: 1rem;
             color: #4a5568;
             line-height: 1.6;
             margin-bottom: 16px;
-        }
+        }}
 
-        .card-badge {
+        .card-badge {{
             display: inline-block;
             padding: 4px 12px;
             border-radius: 9999px;
             font-size: 0.875rem;
             font-weight: 500;
-        }
+        }}
 
-        .badge-recommended {
+        .badge-recommended {{
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-        }
+        }}
 
-        .badge-alternative {
+        .badge-alternative {{
             background: #e2e8f0;
             color: #4a5568;
-        }
+        }}
 
-        .features {
+        .features {{
             background: white;
             border-radius: 16px;
             padding: 40px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-        }
+        }}
 
-        .features h2 {
+        .features h2 {{
             font-size: 1.75rem;
             margin-bottom: 24px;
             color: #1a202c;
-        }
+        }}
 
-        .features ul {
+        .features ul {{
             list-style: none;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 16px;
-        }
+        }}
 
-        .features li {
+        .features li {{
             display: flex;
             align-items: center;
             gap: 12px;
             color: #4a5568;
-        }
+        }}
 
-        .features li::before {
+        .features li::before {{
             content: "✓";
             display: flex;
             align-items: center;
@@ -220,29 +220,29 @@ DOCS_HUB_HTML = """
             border-radius: 50%;
             font-size: 0.875rem;
             flex-shrink: 0;
-        }
+        }}
 
-        .footer {
+        .footer {{
             text-align: center;
             color: white;
             margin-top: 40px;
             opacity: 0.8;
-        }
+        }}
 
-        .footer a {
+        .footer a {{
             color: white;
             text-decoration: underline;
-        }
+        }}
 
-        @media (max-width: 768px) {
-            .header h1 {
+        @media (max-width: 768px) {{
+            .header h1 {{
                 font-size: 2rem;
-            }
+            }}
 
-            .grid {
+            .grid {{
                 grid-template-columns: 1fr;
-            }
-        }
+            }}
+        }}
     </style>
 </head>
 <body>
@@ -298,18 +298,15 @@ DOCS_HUB_HTML = """
 
         <div class="footer">
             <p>
-                <strong>Version:</strong> {version} |
-                <strong>Environment:</strong> {environment} |
+                <strong>Version:</strong> {settings.app_version} |
+                <strong>Environment:</strong> {settings.environment.capitalize()} |
                 <a href="https://github.com/shahadathhs/voice-to-text">GitHub</a>
             </p>
         </div>
     </div>
 </body>
 </html>
-""".format(
-    version=settings.app_version,
-    environment=settings.environment.capitalize()
-)
+"""
 
 
 @router.get("/rapidoc", response_class=HTMLResponse, include_in_schema=False)

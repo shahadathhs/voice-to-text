@@ -66,7 +66,6 @@ Contributors who are no longer active but made important contributions:
 
 For questions about contributing, see:
 - [CONTRIBUTING.md](CONTRIBUTING.md)
-- [SUPPORT.md](SUPPORT.md)
 - [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 
 ---

@@ -10,10 +10,10 @@ from app.core.errors import (
 from app.core.logger import logger
 
 __all__ = [
-    "settings",
-    "logger",
     "AppException",
     "AudioFileError",
     "TranscriptionError",
     "ValidationError",
+    "logger",
+    "settings",
 ]

@@ -80,7 +80,6 @@ voice-to-text/
 
 | Document | Description |
 |----------|-------------|
-| **[SUPPORT.md](SUPPORT.md)** | Get help & troubleshooting |
 | **[CONTRIBUTING.md](CONTRIBUTING.md)** | How to contribute |
 | **[SECURITY.md](SECURITY.md)** | Security policy |
 | **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** | Community guidelines |

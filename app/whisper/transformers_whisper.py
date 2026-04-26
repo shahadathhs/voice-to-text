@@ -18,6 +18,7 @@ HF_WHISPER_MODELS = {
 def load_transformers_whisper(model_size: str, device: str) -> Any:
     """Load HF automatic-speech-recognition pipeline with Whisper."""
     from transformers import pipeline
+
     model_id = HF_WHISPER_MODELS.get(model_size, f"openai/whisper-{model_size}")
     return pipeline(
         "automatic-speech-recognition",
@@ -42,7 +43,7 @@ def transcribe_transformers(
     if isinstance(out, dict) and "chunks" in out:
         for ch in out["chunks"]:
             ts = ch.get("timestamp")
-            if ts is not None and isinstance(ts, (tuple, list)) and len(ts) >= 2:
+            if ts is not None and isinstance(ts, tuple | list) and len(ts) >= 2:
                 s, e = float(ts[0]), float(ts[1])
             else:
                 s, e = 0.0, 0.0

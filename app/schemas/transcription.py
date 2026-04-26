@@ -1,15 +1,16 @@
 """Transcription-specific Pydantic schemas."""
 
-from typing import Optional
-from pydantic import BaseModel, Field
 from fastapi import status
+from pydantic import BaseModel, Field
 
 
 class TranscriptionMetadata(BaseModel):
     """Metadata for transcription results."""
 
     model: str = Field(..., description="Whisper model size used")
-    backend: str = Field(..., description="Whisper backend used (openai or transformers)")
+    backend: str = Field(
+        ..., description="Whisper backend used (openai or transformers)"
+    )
     device: str = Field(..., description="Device used (cpu or cuda)")
     translated: bool = Field(..., description="Whether translation was performed")
     diarized: bool = Field(..., description="Whether speaker diarization was performed")
@@ -69,9 +70,15 @@ class TranscriptionRequest(BaseModel):
 
     translate: bool = Field(default=False, description="Translate to English")
     diarize: bool = Field(default=False, description="Enable speaker diarization")
-    diarize_threshold: float = Field(default=0.35, ge=0.0, le=1.0, description="Clustering threshold (0.0-1.0)")
-    max_speakers: Optional[int] = Field(default=None, ge=1, description="Fixed number of speakers")
-    use_silhouette: bool = Field(default=False, description="Estimate speakers from embeddings")
+    diarize_threshold: float = Field(
+        default=0.35, ge=0.0, le=1.0, description="Clustering threshold (0.0-1.0)"
+    )
+    max_speakers: int | None = Field(
+        default=None, ge=1, description="Fixed number of speakers"
+    )
+    use_silhouette: bool = Field(
+        default=False, description="Estimate speakers from embeddings"
+    )
 
     model_config = {
         "json_schema_extra": {

@@ -35,7 +35,7 @@ def transcribe(
     classifier: Any = None,
     diarize_threshold: float = 0.35,
     max_speakers: int | None = None,
-    whisper_backend: str = None,
+    whisper_backend: str | None = None,
     use_silhouette: bool = False,
 ) -> str:
     """
@@ -51,7 +51,9 @@ def transcribe(
 
     if isinstance(model, str):
         model_size = model
-        print(f"[*] Loading Whisper model '{model_size}' (backend: {whisper_backend})...")
+        print(
+            f"[*] Loading Whisper model '{model_size}' (backend: {whisper_backend})..."
+        )
         try:
             if whisper_backend == "transformers":
                 model = load_transformers_whisper(model_size, device)
@@ -82,7 +84,9 @@ def transcribe(
             use_silhouette=use_silhouette,
         )
         if diarized_orig:
-            orig_text = "\n".join([f"{s['speaker']}: {s['text']}" for s in diarized_orig])
+            orig_text = "\n".join(
+                [f"{s['speaker']}: {s['text']}" for s in diarized_orig]
+            )
         else:
             orig_text = "\n".join([s["text"].strip() for s in orig_segments])
     else:
@@ -93,7 +97,9 @@ def transcribe(
     if translate:
         print("[*] Running translation to English...")
         try:
-            trans_segments = _run_whisper(model, audio_path, "translate", whisper_backend)
+            trans_segments = _run_whisper(
+                model, audio_path, "translate", whisper_backend
+            )
             if diarize and diarized_orig:
                 trans_lines = []
                 for seg in trans_segments:

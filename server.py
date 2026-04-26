@@ -8,5 +8,3 @@ __all__ = ["app"]
 #   uvicorn server:app --reload
 #   python -m uvicorn server:app --reload
 #   make dev
-
-

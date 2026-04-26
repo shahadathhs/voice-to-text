@@ -1,6 +1,7 @@
 """Base Pydantic schemas for request/response validation."""
 
-from typing import Any, Optional, TypeVar, Generic
+from typing import Any, Generic, TypeVar
+
 from pydantic import BaseModel, Field
 
 T = TypeVar("T")
@@ -15,7 +16,19 @@ class MetaData(BaseModel):
     has_next: bool = Field(..., description="Whether there is a next page")
     has_prev: bool = Field(..., description="Whether there is a previous page")
 
-    model_config = {"json_schema_extra": {"examples": [{"total": 100, "page": 1, "page_size": 20, "has_next": True, "has_prev": False}]}}
+    model_config = {
+        "json_schema_extra": {
+            "examples": [
+                {
+                    "total": 100,
+                    "page": 1,
+                    "page_size": 20,
+                    "has_next": True,
+                    "has_prev": False,
+                }
+            ]
+        }
+    }
 
 
 class DataResponse(BaseModel, Generic[T]):
@@ -25,7 +38,7 @@ class DataResponse(BaseModel, Generic[T]):
     success: bool = Field(..., description="Whether the request was successful")
     message: str = Field(..., description="Response message")
     data: T = Field(..., description="Response data")
-    metadata: Optional[MetaData] = Field(None, description="Optional metadata")
+    metadata: MetaData | None = Field(None, description="Optional metadata")
 
     model_config = {
         "json_schema_extra": {
@@ -48,8 +61,10 @@ class ErrorResponse(BaseModel):
     status_code: int = Field(..., description="HTTP status code", ge=100, le=599)
     success: bool = Field(False, description="Always False for errors")
     message: str = Field(..., description="Error message")
-    errors: Optional[list[Any]] = Field(None, description="Optional list of validation errors")
-    details: Optional[dict[str, Any]] = Field(None, description="Optional error details")
+    errors: list[Any] | None = Field(
+        None, description="Optional list of validation errors"
+    )
+    details: dict[str, Any] | None = Field(None, description="Optional error details")
 
     model_config = {
         "json_schema_extra": {
@@ -118,4 +133,3 @@ class PaginatedResponse(BaseModel, Generic[T]):
             ]
         }
     }
-

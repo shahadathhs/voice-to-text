@@ -6,9 +6,9 @@ from fastapi import APIRouter, File, UploadFile, status
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.core.response import ResponseBuilder
 from app.core.errors import AudioFileError, TranscriptionError
 from app.core.logger import logger
+from app.core.response import ResponseBuilder
 from app.services.transcriber import transcription_service
 
 router = APIRouter()
@@ -104,7 +104,7 @@ def root() -> dict[str, Any]:
                         },
                     }
                 }
-            }
+            },
         }
     },
 )
