@@ -1,0 +1,121 @@
+"""Configuration management using Pydantic Settings."""
+
+import os
+from pathlib import Path
+from typing import Literal
+
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Application settings."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    # Application
+    app_name: str = Field(default="Voice-to-Text API", description="Application name")
+    app_version: str = Field(default="1.0.0", description="Application version")
+    environment: Literal["development", "production", "testing"] = Field(
+        default="development", description="Environment"
+    )
+    debug: bool = Field(default=False, description="Debug mode")
+
+    # Server
+    host: str = Field(default="0.0.0.0", description="Server host")
+    port: int = Field(default=8000, description="Server port")
+    workers: int = Field(default=1, description="Number of worker processes")
+
+    # API
+    api_prefix: str = Field(default="", description="API prefix")
+    max_file_size: int = Field(default=500 * 1024 * 1024, description="Max file size in bytes")
+    allowed_formats: list[str] = Field(
+        default=["wav", "mp3", "ogg", "m4a", "flac", "aac"],
+        description="Allowed audio formats",
+    )
+
+    # Paths
+    base_dir: Path = Field(default_factory=lambda: Path(__file__).parent.parent.parent)
+    media_dir: Path = Field(default="media", description="Media files directory (contains audio/ and transcripts/)")
+    audio_dir: Path = Field(default="media/audio", description="Audio files directory")
+    transcript_dir: Path = Field(default="media/transcripts", description="Transcript output directory")
+    model_cache_dir: Path = Field(default="model-cache", description="Model cache directory")
+
+    # Whisper Configuration
+    whisper_model: Literal["tiny", "base", "small", "medium", "large"] = Field(
+        default="base", description="Whisper model size"
+    )
+    whisper_backend: Literal["openai", "transformers"] = Field(
+        default="openai", description="Whisper backend"
+    )
+    whisper_device: Literal["cpu", "cuda"] = Field(
+        default="cpu", description="Whisper device"
+    )
+
+    # Features
+    enable_translation: bool = Field(default=False, description="Enable translation")
+    enable_diarization: bool = Field(default=False, description="Enable speaker diarization")
+
+    # Diarization
+    diarize_threshold: float = Field(default=0.35, description="Diarization threshold")
+    max_speakers: int | None = Field(default=None, description="Maximum number of speakers")
+    use_silhouette: bool = Field(default=False, description="Use silhouette analysis")
+
+    # Logging
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
+        default="INFO", description="Log level"
+    )
+    log_file: str | None = Field(default=None, description="Log file path")
+
+    @field_validator("audio_dir", "transcript_dir", "model_cache_dir", mode="before")
+    @classmethod
+    def resolve_paths(cls, v: str | Path) -> Path:
+        """Resolve path strings to Path objects."""
+        if isinstance(v, str):
+            return Path(v)
+        return v
+
+    @field_validator("audio_dir", "transcript_dir", "model_cache_dir")
+    @classmethod
+    def make_absolute(cls, v: Path, info) -> Path:
+        """Make paths absolute relative to base directory."""
+        if not v.is_absolute():
+            return info.data.get("base_dir", Path.cwd()) / v
+        return v
+
+    class Config:
+        """Pydantic config."""
+
+        validate_assignment = True
+
+
+# Create settings instance
+settings = Settings()
+
+
+def ensure_directories() -> None:
+    """Ensure required directories exist."""
+    directories = [
+        settings.media_dir,
+        settings.audio_dir,
+        settings.transcript_dir,
+        settings.model_cache_dir,
+    ]
+
+    for directory in directories:
+        directory.mkdir(parents=True, exist_ok=True)
+        if settings.debug:
+            logger.debug(f"Ensured directory exists: {directory}")
+
+
+# Initialize directories on import
+try:
+    ensure_directories()
+except Exception as e:
+    # If we're early in initialization, logger might not be available
+    print(f"Warning: Could not ensure directories exist: {e}")

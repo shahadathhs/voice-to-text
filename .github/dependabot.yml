@@ -8,8 +8,6 @@ updates:
       day: "monday"
       time: "09:00"
     open-pull-requests-limit: 10
-    reviewers:
-      - "shahadathhs"
     assignees:
       - "shahadathhs"
     labels:
@@ -39,8 +37,6 @@ updates:
       day: "monday"
       time: "09:00"
     open-pull-requests-limit: 5
-    reviewers:
-      - "shahadathhs"
     assignees:
       - "shahadathhs"
     labels:
@@ -58,8 +54,6 @@ updates:
       day: "monday"
       time: "09:00"
     open-pull-requests-limit: 5
-    reviewers:
-      - "shahadathhs"
     assignees:
       - "shahadathhs"
     labels:

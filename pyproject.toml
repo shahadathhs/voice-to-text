@@ -47,10 +47,14 @@ dependencies = [
 ]
 
 [tool.hatch.version]
-path = "voice_to_text/__init__.py"
+path = "app/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["voice_to_text"]
+packages = ["app", "voice_to_text"]
+
+[project.scripts]
+voice-to-text = "app.cli.main:main"
+vtt = "app.cli.main:main"  # Short alias
 
 [dependency-groups]
 dev = [
@@ -185,6 +189,7 @@ skips = ["B101"]  # Skip assert_used
 [tool.semantic_release]
 version_source = "tag"
 version_variables = [
+    "app/__init__.py:__version__",
     "voice_to_text/__init__.py:__version__",
 ]
 branch = "main"

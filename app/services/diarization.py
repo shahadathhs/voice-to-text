@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from voice_to_text.config import (
+from app.core.config import (
     DIARIZE_SAMPLE_RATE,
     MIN_CHUNK_MS,
     MIN_SEGMENT_MS,

@@ -1,67 +1,206 @@
 # Voice-to-Text: CLI + FastAPI Server
 
-A standalone, **fully local** voice-to-text system using OpenAI's Whisper (open-source). All models run on your machine—no API keys, no cloud calls; audio never leaves your device. This version supports **Dual Output (Original + Translation)** and **Local-First Speaker Diarization** (no tokens required).
+A **fully local** AI-powered voice transcription system using OpenAI's Whisper (open-source). All models run on your machine—no API keys, no cloud calls, audio never leaves your device. Supports **translation**, **speaker diarization**, and multiple **Whisper backends**.
 
-**Features:**
+## ✨ Features
+
 - 🖥️ **CLI Interface**: Command-line tool for local transcription
-- 🌐 **FastAPI Server**: REST API for transcription services
-- 🔄 **Dual Mode**: Use as CLI or deploy as API server
-- 🌍 **Translation**: Translate to English with original transcript
-- 👥 **Speaker Diarization**: Identify and label different speakers
-- 🐳 **Docker Support**: Easy containerization
+- 🌐 **FastAPI Server**: REST API with persistent model loading
+- 🔄 **Dual Mode**: Use as standalone CLI or deploy as API server
+- 🌍 **Translation**: Translate non-English audio to English (includes original)
+- 👥 **Speaker Diarization**: Identify and label different speakers (token-free)
+- 🔧 **Multiple Backends**: OpenAI Whisper or Hugging Face Transformers
+- 🐳 **Docker Support**: Easy containerization and deployment
+- 📊 **Smart Clustering**: Sub-segments, temporal smoothing, silhouette analysis
 
-## Prerequisites
+## 🏗️ Architecture
 
-- **Docker** and **Docker Compose** installed (for containerized usage)
-- **FFmpeg** (only if running locally without Docker)
-- **Make** (installed by default on most Linux systems)
-- **UV** (Python package manager - 10-100x faster than pip)
+### Overview
+
+```
+Audio Input → Whisper (ASR) → Segments → Diarization/Translation → Output
+                                    ↓
+                            SpeechBrain ECAPA
+                            (speaker embeddings)
+```
+
+### Data Flow
+
+1. **Input**: Audio file (WAV, MP3, OGG, M4A, FLAC, AAC)
+2. **Whisper**: Load model → transcribe task → segments `[{start, end, text}]`
+3. **Diarization**: Extract SpeechBrain ECAPA embeddings → cluster → assign `SPEAKER_XX` → temporal smoothing
+4. **Translation**: Run Whisper with `translate` task → map speakers via time overlap
+5. **Output**: Combined text saved to `transcripts/`
+
+### Backends
+
+- **OpenAI Whisper** (default): Uses the `whisper` package
+- **Transformers**: Hugging Face `automatic-speech-recognition` pipeline with `openai/whisper-*`
+
+Both run locally with identical segment format. Switch via `--whisper-backend` or `WHISPER_BACKEND` env var.
+
+### Diarization Algorithm
+
+- **Sub-segments**: Long segments (>3s) split into sliding windows (1.5s window, 0.5s stride)
+- **Embeddings**: One SpeechBrain ECAPA embedding per window
+- **Segment label**: Majority vote of its windows
+- **Short segments**: Label from temporally nearest embedded chunk
+- **Smoothing**: Segments <2s that differ from both neighbors are flipped to previous label
+- **Clustering**: AgglomerativeClustering (cosine distance)
+
+## 📁 Project Structure
+
+```
+voice-to-text/
+├── app/                       # Main application package
+│   ├── __init__.py           # Package exports
+│   ├── main.py               # FastAPI application
+│   ├── api/                  # REST API layer
+│   │   ├── __init__.py
+│   │   └── routes.py        # API endpoints
+│   ├── cli/                  # CLI interface
+│   │   ├── __init__.py
+│   │   └── main.py          # CLI entry point
+│   ├── core/                 # Core functionality
+│   │   ├── __init__.py
+│   │   ├── config.py        # Configuration (Pydantic Settings)
+│   │   ├── errors.py        # Custom exceptions
+│   │   └── logger.py        # Logging setup
+│   ├── services/             # Business logic layer
+│   │   ├── __init__.py
+│   │   ├── diarization.py   # Speaker diarization
+│   │   ├── pipeline.py      # Transcription orchestration
+│   │   └── transcriber.py   # Transcription service
+│   ├── utils/                # Utility functions
+│   │   ├── __init__.py
+│   │   └── io_utils.py      # File I/O operations
+│   └── whisper/              # Whisper implementations
+│       ├── __init__.py
+│       ├── openai_whisper.py    # OpenAI backend
+│       └── transformers_whisper.py # HuggingFace backend
+├── audio/                     # Input audio files
+├── transcripts/               # Output transcripts (auto-created)
+├── cli.py                     # CLI entry point
+├── server.py                  # Server entry point
+├── pyproject.toml            # UV package manager config
+├── Makefile                   # Automation commands
+├── compose.yaml               # Docker Compose setup
+├── Dockerfile                 # Production container image
+└── .claude/                   # Development guide
+    └── CLAUDE.md             # AI development documentation
+```
+
+### Module Responsibilities
+
+| Layer | Purpose |
+|-------|---------|
+| **Core** | Configuration, errors, logging |
+| **Services** | Business logic, orchestration, diarization |
+| **Utils** | File I/O, helper functions |
+| **Whisper** | Model implementations, backends |
+| **API** | HTTP endpoints, request handling |
+| **CLI** | Command-line interface, argument parsing |
 
 ---
 
-## 🚀 Quick Start with Makefile (Easiest)
+## 🚀 Quick Start
 
-We provide a `Makefile` to simplify the Docker commands.
+### Prerequisites
 
-### 1. Build the Image
+- **Docker** and **Docker Compose** (recommended)
+- **Make** (installed by default on most systems)
+- **FFmpeg** (only for local installation without Docker)
+- **UV** (Python package manager - 10-100x faster than pip)
 
+### Option 1: Using Makefile (Easiest)
+
+#### Build the Image
 ```bash
 make build
 ```
 
-### 2. Run Basic Transcription
-
+#### Basic Transcription
 ```bash
 make run AUDIO=audio/mix.mp3
 ```
 
-### 3. Translate to English (Includes Original Transcript)
-
+#### Translate to English
 ```bash
 make translate AUDIO=audio/mix.mp3
 ```
 
-### 4. Speaker Diarization
-
-To identify different speakers and label the transcript (`SPEAKER_00: Hello`):
-
+#### Speaker Diarization
 ```bash
-make diarize AUDIO=audio/mix.mp3
+make diarize AUDIO=audio/multi_person.mp3
 ```
 
-### 5. All-in-one (Transcribe + Translate + Diarize)
+#### All Features Combined
+```bash
+make all AUDIO=audio/multi_person.mp3
+```
+
+### Option 2: Using Docker Compose (Manual)
 
 ```bash
-make all AUDIO=audio/mix.mp3
+# Build
+docker compose build
+
+# Basic
+docker compose run --rm whisper audio.wav
+
+# With translation
+docker compose run --rm whisper audio.wav --translate
+
+# With diarization
+docker compose run --rm whisper audio.wav --diarize
+```
+
+### Option 3: Local Installation
+
+#### Using UV (Recommended - 10-100x faster)
+
+```bash
+# 1. Install FFmpeg
+sudo apt update && sudo apt install ffmpeg libsndfile1
+
+# 2. Install UV
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 3. Setup and install
+make setup
+# Or manually:
+uv venv
+uv sync
+
+# 4. Run CLI
+uv run python cli.py audio.wav --translate --diarize
+
+# 5. Run API server
+make dev
+# Or manually:
+uv run python -m uvicorn server:app --reload --host 0.0.0.0 --port 8000
+```
+
+#### Using pip (Legacy - Deprecated)
+
+```bash
+# 1. Install FFmpeg
+sudo apt update && sudo apt install ffmpeg libsndfile1
+
+# 2. Setup environment
+python3 -m venv venv
+source venv/bin/activate
+pip install -e .
+
+# 3. Run
+python3 cli.py audio.wav --translate --diarize
 ```
 
 ---
 
-## 🌐 API Server (FastAPI)
+## 🌐 API Server
 
-For persistent model loading and instant transcription via HTTP:
-
-### 1. Start the Server
+### Start the Server
 
 ```bash
 make server
@@ -69,170 +208,170 @@ make server
 
 The server loads models **once** at startup. Subsequent requests are instant.
 
-### 2. Access Swagger UI
+### Access API Documentation
 
 ```bash
 make docs
 ```
 
-Or visit: [http://localhost:8000/docs](http://localhost:8000/docs)
+Or visit: **http://localhost:8000/docs**
 
-### 3. Example API Request
+### Example API Request
 
 ```bash
+# Basic transcription
+curl -X POST "http://localhost:8000/transcribe" \
+  -F "file=@audio/multi_person.mp3"
+
+# With translation and diarization
 curl -X POST "http://localhost:8000/transcribe?translate=true&diarize=true" \
   -F "file=@audio/multi_person.mp3"
+
+# Advanced options
+curl -X POST "http://localhost:8000/transcribe?diarize=true&max_speakers=2" \
+  -F "file=@audio/meeting.mp3"
 ```
 
-Query params: `diarize_threshold`, `max_speakers`, `use_silhouette` (estimate speaker count from embeddings).
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | API information |
+| `/health` | GET | Health check |
+| `/transcribe` | POST | Transcribe audio file |
+| `/docs` | GET | Swagger UI documentation |
+| `/redoc` | GET | ReDoc documentation |
+
+### Query Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `translate` | boolean | `false` | Translate to English |
+| `diarize` | boolean | `false` | Enable speaker diarization |
+| `diarize_threshold` | float | `0.35` | Clustering distance (0.0-1.0) |
+| `max_speakers` | int | `null` | Fixed number of speakers |
+| `use_silhouette` | boolean | `false` | Estimate speakers from embeddings |
 
 ---
 
-## 🐳 Quick Start with Docker (Manual)
+## ⚙️ Configuration
 
-If you don't have `make` installed:
-
-### 1. Build
+### CLI Options
 
 ```bash
-docker compose build
+python cli.py audio.wav [OPTIONS]
+
+Options:
+  --model {tiny,base,small,medium,large}
+                          Whisper model size (default: base)
+  --backend {openai,transformers}
+                          Whisper backend (default: openai)
+  --translate             Translate to English
+  --diarize               Enable speaker diarization
+  --diarize-threshold FLOAT
+                          Clustering threshold 0.0-1.0 (default: 0.35)
+  --max-speakers INT      Fixed number of speakers
+  --use-silhouette        Estimate speakers from embeddings
+  --output PATH           Output file path
+  --verbose, -v           Enable verbose output
+  --debug                 Enable debug mode
 ```
 
-### 2. Run
+### Environment Variables
+
+Set these in `.env` or export before running:
 
 ```bash
-# Basic
-docker compose run --rm whisper audio.wav
+# Application
+ENVIRONMENT=production      # development, production, testing
+DEBUG=false                # Debug mode
 
-# Dual Output (Original + translation)
-docker compose run --rm whisper audio.wav --translate
+# Server
+HOST=0.0.0.0               # Server host
+PORT=8000                  # Server port
+WORKERS=1                  # Number of workers
 
-# Diarization (No token required!)
-docker compose run --rm whisper audio.wav --diarize
+# Whisper Configuration
+WHISPER_MODEL=base         # tiny, base, small, medium, large
+WHISPER_BACKEND=openai     # openai, transformers
+WHISPER_DEVICE=cpu         # cpu, cuda
+
+# Features
+ENABLE_TRANSLATION=false   # Enable translation
+ENABLE_DIARIZATION=false   # Enable diarization
+
+# Diarization
+DIARIZE_THRESHOLD=0.35     # Clustering threshold
+MAX_SPEAKERS=null          # Max speakers (null = unlimited)
+USE_SILHOUETTE=false       # Use silhouette analysis
+
+# Logging
+LOG_LEVEL=INFO            # DEBUG, INFO, WARNING, ERROR, CRITICAL
 ```
 
 ---
 
-## 📂 Output
+## 📂 Output Format
 
-- Transcripts are saved to `transcripts/`.
-- If diarization is enabled, output follows the format: `SPEAKER_XX: [Text segment]`
-- If translation is enabled, files contain both the **Original language** and the **English translation**.
-
----
-
-## 🛠️ Local Installation
-
-### Using UV (Recommended - 10-100x faster)
-
-1. **Install FFmpeg**:
-   ```bash
-   sudo apt update && sudo apt install ffmpeg libsndfile1
-   ```
-
-2. **Install UV**:
-   ```bash
-   curl -LsSf https://astral.sh/uv/install.sh | sh
-   ```
-
-3. **Setup and Install**:
-   ```bash
-   make setup
-   # Or manually:
-   uv venv
-   uv sync
-   ```
-
-4. **Run CLI**:
-   ```bash
-   uv run python transcribe.py audio.wav --translate --diarize
-   ```
-
-5. **Run API Server**:
-   ```bash
-   make dev
-   # Or manually:
-   uv run python -m uvicorn server:app --reload --host 0.0.0.0 --port 8000
-   ```
-
-### Using pip (Legacy - Deprecated)
-
-1. **Install FFmpeg**: `sudo apt update && sudo apt install ffmpeg libsndfile1`
-2. **Setup Environment**:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -e .
-   ```
-3. **Run**:
-   ```bash
-   python3 transcribe.py audio.wav --translate --diarize
-   ```
-
----
-
-## ⚙️ Options
-
-- `--model`: Whisper model size (`tiny`, `base`, `small`, `medium`, `large`). Default: `base`.
-- `--whisper-backend`: `openai-whisper` (default) or `transformers` (Hugging Face). Both run locally.
-- `--translate`: Translate non-English audio to English.
-- `--diarize`: Enable speaker diarization (SpeechBrain + sliding-window sub-segments + temporal smoothing).
-- `--diarize-threshold`: Clustering distance (lower = more speakers). Default: `0.35`. Ignored if `--max-speakers` is set.
-- `--max-speakers`: Fix number of speakers (e.g. `2` for two-person dialogue). Overrides `--diarize-threshold`.
-- `--use-silhouette`: Estimate number of speakers from embeddings when `--max-speakers` is not set.
-
-**Server:** Set `WHISPER_BACKEND=transformers` or `WHISPER_MODEL=small` in the environment to change the loaded model.
-
----
-
-## 📁 Project Structure
-
+### Without Diarization
 ```
-voice-to-text/
-├── voice_to_text/          # Main package
-│   ├── __init__.py        # Package initialization
-│   ├── cli.py             # CLI interface
-│   ├── config.py          # Configuration
-│   ├── diarization.py     # Speaker diarization
-│   ├── io_utils.py        # File I/O utilities
-│   ├── pipeline.py        # Transcription pipeline
-│   └── backends/          # Whisper backends (openai, transformers)
-├── transcribe.py          # CLI entrypoint
-├── server.py              # FastAPI server
-├── .claude/               # Development guide
-│   └── CLAUDE.md          # AI development documentation
-├── pyproject.toml         # Project configuration (UV)
-├── Makefile               # Automation commands
-├── compose.yaml           # Docker Compose configuration
-└── Dockerfile             # Container image
+--- ORIGINAL TRANSCRIPT ---
+This is the first segment.
+This is the second segment.
 ```
 
-- **CLI Mode**: Run `transcribe.py` for local transcription
-- **API Mode**: Run `server.py` for REST API service
-- **Docker Mode**: Use `make server` for containerized API
+### With Diarization
+```
+--- ORIGINAL TRANSCRIPT ---
+SPEAKER_00: This is the first speaker.
+SPEAKER_01: This is the second speaker.
+SPEAKER_00: Back to the first speaker.
+```
 
-See **[`.claude/CLAUDE.md`](.claude/CLAUDE.md)** for comprehensive development guide.
+### With Translation
+```
+--- ORIGINAL TRANSCRIPT ---
+SPEAKER_00: Bonjour, comment allez-vous?
+SPEAKER_01: Très bien, merci!
+
+--- ENGLISH TRANSLATION ---
+SPEAKER_00: Hello, how are you?
+SPEAKER_01: Very well, thank you!
+```
+
+### File Naming
+
+Transcripts are saved to `transcripts/` with unique filenames:
+```
+audio_20260426_083000.txt
+```
 
 ---
 
 ## 🧹 Code Quality
 
-We use **Ruff** for linting and formatting, **Black** for code formatting, **MyPy** for type checking, and **Bandit** for security scanning.
-
-### Check for issues
+We use **Ruff** for linting, **Black** for formatting, **MyPy** for type checking, and **Bandit** for security scanning.
 
 ```bash
+# Check for issues
 make lint           # Ruff linting
 make type-check     # MyPy type checking
 make format         # Black formatting
 make check-all      # Run all checks
 make fix-all        # Auto-fix all issues
+
+# Run full CI locally
+make ci             # Run pre-commit, security scan, build
 ```
 
-### Run full CI locally
+### Pre-commit Hooks
 
 ```bash
-make ci             # Run pre-commit hooks, security scan, and build
+# Install hooks (runs before every commit)
+make pre-commit-install
+
+# Run manually
+make pre-commit-run
 ```
 
 ---
@@ -250,18 +389,158 @@ make pre-commit-install
 
 # Start development server with hot reload
 make dev
+
+# Start with debug logging
+make dev-verbose
 ```
 
 ### Available Commands
 
 ```bash
 make help           # Show all available commands
+make build          # Build Docker image
+make rebuild        # Rebuild without cache
+make server         # Start API server
+make docs           # Open Swagger UI
+make logs           # View Docker logs
+make stop           # Stop services
 ```
+
+---
+
+## 🐳 Docker Deployment
+
+### Production Deployment
+
+```bash
+# Build production image
+make docker-build
+
+# Run with Docker Compose
+docker compose -f compose.yaml up -d
+
+# View logs
+make docker-logs
+
+# Stop services
+make stop
+```
+
+### Docker Compose Services
+
+- **whisper**: Main CLI application
+- **api**: FastAPI server (when using `make server`)
 
 ---
 
 ## 📚 Documentation
 
-- **[`.claude/CLAUDE.md`](.claude/CLAUDE.md)** - Comprehensive development guide
-- **[`docs/`](docs/)** - Additional documentation
+- **[`.claude/CLAUDE.md`](.claude/CLAUDE.md)** - Comprehensive AI development guide
 - **API Documentation** - Available at http://localhost:8000/docs when server is running
+
+---
+
+## 🔧 Troubleshooting
+
+### Model Issues
+
+```bash
+# Clear model cache
+rm -rf model-cache/
+
+# Test with smaller model
+WHISPER_MODEL=tiny make dev
+```
+
+### Docker Issues
+
+```bash
+# View container logs
+make docker-logs
+
+# Restart services
+make stop
+make server
+
+# Clean rebuild
+make docker-rebuild
+```
+
+### Import Errors
+
+```bash
+# Reinstall dependencies
+make setup
+
+# Clear Python cache
+find . -type d -name __pycache__ -exec rm -rf {} +
+```
+
+---
+
+## 📋 Requirements
+
+### Core Dependencies
+
+```
+fastapi>=0.115.0          # Web framework
+uvicorn[standard]>=0.32.0 # ASGI server
+pydantic>=2.0            # Data validation
+pydantic-settings>=2.0   # Configuration management
+openai-whisper           # Transcription model
+transformers>=4.40.0     # Hugging Face transformers
+speechbrain              # Speaker diarization
+loguru>=0.7.0            # Logging
+pydub                    # Audio processing
+```
+
+### Development Tools
+
+```
+uv                        # Package manager (10-100x faster)
+ruff==0.15.11            # Linting and formatting
+black==26.3.1            # Code formatting
+mypy==1.20.1             # Type checking
+bandit>=1.9.4            # Security scanning
+pre-commit>=4.5.1        # Git hooks
+```
+
+---
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes following conventions
+4. Run `make check-all` before committing
+5. Submit a pull request
+
+### Code Style
+
+- **Type hints**: Required for all functions
+- **Docstrings**: Google style for functions/classes
+- **Formatting**: Auto-applied by pre-commit hooks
+- **Naming**: `snake_case` for files/functions, `PascalCase` for classes
+
+---
+
+## 📄 License
+
+This project is open source and available under the MIT License.
+
+---
+
+## 🎯 Roadmap
+
+- [ ] Add more Whisper model variants
+- [ ] Support for batch processing
+- [ ] Real-time streaming transcription
+- [ ] Additional language models
+- [ ] Web UI for easy transcription
+- [ ] Cloud deployment options
+
+---
+
+**Made with ❤️ using OpenAI Whisper, FastAPI, and UV**

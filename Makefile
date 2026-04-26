@@ -194,12 +194,12 @@ clean: ## Clean up generated files
 	@echo "Cleaning up generated files..."
 	find . -type d \( -name "__pycache__" -o -name ".pytest_cache" -o -name ".ruff_cache" -o -name ".mypy_cache" \) -exec rm -rf {} + 2>/dev/null || true
 	find . -type f \( -name "*.pyc" -o -name "*.pyo" -o -name "*.pyd" -o -name ".coverage" \) -delete 2>/dev/null || true
-	rm -rf build/ dist/ *.egg-info/ htmlcov/ logs/ .venv/ .uv/ uv.lock transcripts/* 2>/dev/null || true
+	rm -rf build/ dist/ *.egg-info/ htmlcov/ logs/ .venv/ .uv/ uv.lock media/transcripts/* 2>/dev/null || true
 	@echo "✓ Cleanup complete"
 
 clean-transcripts: ## Clean transcripts folder only
 	@echo "Cleaning transcripts..."
-	rm -rf transcripts/*
+	rm -rf media/transcripts/*
 	@echo "✓ Transcripts cleaned"
 
 shell: ## Open Python shell with app context

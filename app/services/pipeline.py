@@ -4,9 +4,9 @@ from typing import Any
 
 import torch
 
-from voice_to_text.config import WHISPER_BACKEND_DEFAULT
-from voice_to_text.diarization import assign_speaker_by_overlap, perform_diarization
-from voice_to_text.backends import (
+from app.core.config import WHISPER_BACKEND_DEFAULT
+from app.services.diarization import assign_speaker_by_overlap, perform_diarization
+from app.whisper import (
     load_openai_whisper,
     load_transformers_whisper,
     transcribe_openai,
