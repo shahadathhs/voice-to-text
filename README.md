@@ -1,8 +1,46 @@
 # Voice-to-Text: CLI + FastAPI Server
 
+[![Python](https://img.shields.io/badge/python-3.14+-blue.svg)](https://www.python.org/downloads/release/python-3140/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)](https://fastapi.tiangolo.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+## Table of Contents
+
+- [Overview](#-overview)
+- [Features](#-features)
+- [Architecture](#-architecture)
+- [Quick Start](#-quick-start)
+- [Project Structure](#-project-structure)
+- [Development](#-development)
+- [API Documentation](#-api-documentation)
+- [Contributing](#-contributing)
+- [License](#-license)
+
+---
+
+## Overview
+
+**Voice-to-Text** is a **fully local** AI-powered voice transcription system using OpenAI's Whisper (open-source). All models run on your machine—no API keys, no cloud calls, audio never leaves your device. Supports **translation**, **speaker diarization**, and multiple **Whisper backends**.
+
+---
+
+## Features
+
 A **fully local** AI-powered voice transcription system using OpenAI's Whisper (open-source). All models run on your machine—no API keys, no cloud calls, audio never leaves your device. Supports **translation**, **speaker diarization**, and multiple **Whisper backends**.
 
 ## ✨ Features
+
+- 🖥️ **CLI Interface**: Command-line tool for local transcription
+- 🌐 **FastAPI Server**: REST API with persistent model loading
+- 🔄 **Dual Mode**: Use as standalone CLI or deploy as API server
+- 🌍 **Translation**: Translate non-English audio to English (includes original)
+- 👥 **Speaker Diarization**: Identify and label different speakers (token-free)
+- 🔧 **Multiple Backends**: OpenAI Whisper or Hugging Face Transformers
+- 🐳 **Docker Support**: Easy containerization and deployment
+- 📊 **Smart Clustering**: Sub-segments, temporal smoothing, silhouette analysis
+- 📁 **Unified Media Storage**: Organized media folder structure for audio and transcripts
+- 🔒 **Fully Local**: No data sent to cloud, complete privacy
 
 - 🖥️ **CLI Interface**: Command-line tool for local transcription
 - 🌐 **FastAPI Server**: REST API with persistent model loading
@@ -95,6 +133,118 @@ voice-to-text/
 | Layer | Purpose |
 |-------|---------|
 | **Core** | Configuration, errors, logging |
+| **Services** | Business logic, orchestration, diarization |
+| **Utils** | File I/O, helper functions |
+| **Whisper** | Model implementations, backends |
+| **API** | HTTP endpoints, request handling |
+| **CLI** | Command-line interface, argument parsing |
+
+---
+
+## 🏗️ Architecture
+
+### Overview
+
+```
+Audio Input → Whisper (ASR) → Segments → Diarization/Translation → Output
+                                    ↓
+                            SpeechBrain ECAPA
+                            (speaker embeddings)
+```
+
+### Data Flow
+
+1. **Input**: Audio file (WAV, MP3, OGG, M4A, FLAC, AAC)
+2. **Whisper**: Load model → transcribe task → segments `[{start, end, text}]`
+3. **Diarization**: Extract SpeechBrain ECAPA embeddings → cluster → assign `SPEAKER_XX` → temporal smoothing
+4. **Translation**: Run Whisper with `translate` task → map speakers via time overlap
+5. **Output**: Combined text saved to `media/transcripts/`
+
+### Backends
+
+- **OpenAI Whisper** (default): Uses the `whisper` package
+- **Transformers**: Hugging Face `automatic-speech-recognition` pipeline with `openai/whisper-*`
+
+Both run locally with identical segment format. Switch via `--whisper-backend` or `WHISPER_BACKEND` env var.
+
+### Technology Stack
+
+```python
+# Core Dependencies
+fastapi>=0.115.0          # Web framework
+uvicorn[standard]>=0.32.0 # ASGI server
+pydantic>=2.0            # Data validation
+pydantic-settings>=2.0   # Configuration management
+openai-whisper           # Transcription model
+transformers>=4.40.0     # Hugging Face transformers
+speechbrain              # Speaker diarization
+loguru>=0.7.0            # Logging
+
+# Development Tools
+uv                        # Package manager (10-100x faster)
+ruff==0.15.11            # Linting and formatting
+black==26.3.1             # Code formatting
+mypy==1.20.1             # Type checking
+bandit>=1.9.4            # Security scanning
+pre-commit>=4.5.1        # Git hooks
+```
+
+---
+
+## 📁 Project Structure
+
+```
+voice-to-text/
+├── app/                       # Main application package
+│   ├── __init__.py           # Package exports
+│   ├── main.py               # FastAPI application
+│   ├── api/                  # REST API layer
+│   │   ├── __init__.py
+│   │   └── routes.py        # API endpoints with Swagger docs
+│   ├── cli/                  # CLI interface
+│   │   ├── __init__.py
+│   │   └── main.py          # CLI entry point
+│   ├── core/                 # Core functionality
+│   │   ├── __init__.py
+│   │   ├── config.py        # Configuration (Pydantic Settings)
+│   │   ├── errors.py        # Custom exceptions
+│   │   ├── logger.py        # Logging setup
+│   │   └── response.py      # ResponseBuilder for standardized responses
+│   ├── schemas/              # Pydantic schemas
+│   │   ├── __init__.py
+│   │   ├── base.py          # Base response schemas
+│   │   └── transcription.py # Transcription-specific schemas
+│   ├── services/             # Business logic layer
+│   │   ├── __init__.py
+│   │   ├── diarization.py   # Speaker diarization
+│   │   ├── pipeline.py      # Transcription orchestration
+│   │   └── transcriber.py   # Transcription service
+│   ├── utils/                # Utility functions
+│   │   ├── __init__.py
+│   │   └── io_utils.py      # File I/O operations
+│   └── whisper/              # Whisper implementations
+│       ├── __init__.py
+│       ├── openai_whisper.py    # OpenAI backend
+│       └── transformers_whisper.py # HuggingFace backend
+├── media/                     # Unified media directory
+│   ├── audio/                 # Input audio files
+│   └── transcripts/           # Output transcripts (auto-created)
+├── cli.py                     # CLI entry point
+├── server.py                  # Server entry point
+├── pyproject.toml            # UV package manager config
+├── Makefile                   # Automation commands
+├── compose.yaml               # Docker Compose setup
+├── Dockerfile                 # Production container image
+└── .claude/                   # Development guide
+    └── CLAUDE.md             # AI development documentation
+```
+
+### Module Responsibilities
+
+| Layer | Purpose |
+|-------|---------|
+| **Core** | Configuration, errors, logging, response builders |
+| **Schemas** | Pydantic models for request/response validation |
 | **Services** | Business logic, orchestration, diarization |
 | **Utils** | File I/O, helper functions |
 | **Whisper** | Model implementations, backends |
@@ -216,20 +366,50 @@ make docs
 
 Or visit: **http://localhost:8000/docs**
 
+### Interactive API Features
+
+- **Swagger UI**: Try out endpoints directly from your browser at `/docs`
+- **ReDoc**: Alternative documentation at `/redoc`
+- **Detailed Examples**: Each endpoint includes example requests/responses
+- **Validation**: Automatic request validation with detailed error messages
+- **Response Schemas**: Complete response format documentation
+
 ### Example API Request
 
 ```bash
 # Basic transcription
 curl -X POST "http://localhost:8000/transcribe" \
-  -F "file=@audio/multi_person.mp3"
+  -F "file=@media/audio/multi_person.mp3"
 
 # With translation and diarization
 curl -X POST "http://localhost:8000/transcribe?translate=true&diarize=true" \
-  -F "file=@audio/multi_person.mp3"
+  -F "file=@media/audio/multi_person.mp3"
 
 # Advanced options
 curl -X POST "http://localhost:8000/transcribe?diarize=true&max_speakers=2" \
-  -F "file=@audio/meeting.mp3"
+  -F "file=@media/audio/meeting.mp3"
+```
+
+### API Response Format
+
+All API responses follow a standardized format:
+
+```json
+{
+  "status_code": 200,
+  "success": true,
+  "message": "Transcription completed successfully",
+  "transcript": "SPEAKER_00: Hello world\nSPEAKER_01: Hi there",
+  "saved_to": "media/transcripts/audio_20260426_123456.txt",
+  "metadata": {
+    "model": "base",
+    "backend": "openai",
+    "device": "cpu",
+    "translated": false,
+    "diarized": true,
+    "audio_file": "media/audio/sample.wav"
+  }
+}
 ```
 
 ### API Endpoints

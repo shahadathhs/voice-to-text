@@ -12,7 +12,6 @@ from app.core.config import settings
 from app.core.errors import AudioFileError, ModelLoadError, TranscriptionError
 from app.core.logger import logger
 
-# Import from app package
 try:
     from app.whisper import load_openai_whisper, load_transformers_whisper
     from app.utils import get_unique_filename, save_transcript
@@ -146,7 +145,6 @@ class TranscriptionService:
                             f"Invalid file format: {file_ext}. Allowed: {settings.allowed_formats}"
                         )
 
-                # Save to temp file
                 temp_filename = f"temp_{audio_file.filename}"
                 temp_path = settings.audio_dir / temp_filename
 
@@ -186,7 +184,6 @@ class TranscriptionService:
             else:
                 raise TranscriptionError("Legacy transcription not available")
 
-            # Save transcript
             output_filename = get_unique_filename(audio_path.name)
             saved_path = save_transcript(transcript_text, output_filename)
 

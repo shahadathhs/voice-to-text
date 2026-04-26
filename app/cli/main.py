@@ -141,7 +141,6 @@ def validate_args(args: argparse.Namespace) -> None:
     Raises:
         ValueError: If arguments are invalid
     """
-    # Check if input file exists
     if not args.input.exists():
         raise ValueError(f"Input file not found: {args.input}")
 
@@ -173,7 +172,6 @@ async def transcribe_async(args: argparse.Namespace) -> int:
         # Validate arguments
         validate_args(args)
 
-        # Set media directory if specified
         if args.media_dir:
             media_path = args.media_dir
             media_path.mkdir(parents=True, exist_ok=True)

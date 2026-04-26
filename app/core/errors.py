@@ -1,5 +1,7 @@
 """Custom exceptions for Voice-to-Text application."""
 
+from typing import Any
+
 
 class AppException(Exception):
     """Base exception for application errors."""
@@ -8,7 +10,8 @@ class AppException(Exception):
         self,
         message: str,
         status_code: int = 500,
-        details: dict | None = None,
+        details: dict[str, Any] | None = None,
+        errors: list[Any] | None = None,
     ):
         """Initialize exception.
 
@@ -16,43 +19,186 @@ class AppException(Exception):
             message: Error message
             status_code: HTTP status code
             details: Additional error details
+            errors: List of validation errors
         """
         self.message = message
         self.status_code = status_code
         self.details = details or {}
+        self.errors = errors or []
         super().__init__(self.message)
 
 
 class ValidationError(AppException):
-    """Validation error."""
+    """Validation error (422)."""
 
-    def __init__(self, message: str, details: dict | None = None):
+    def __init__(
+        self,
+        message: str = "Validation error",
+        field: str | None = None,
+        details: dict[str, Any] | None = None,
+    ):
+        """Initialize validation error.
+
+        Args:
+            message: Error message
+            field: Field that failed validation
+            details: Additional error details
+        """
+        if field:
+            details = details or {}
+            details["field"] = field
         super().__init__(message, status_code=422, details=details)
 
 
-class AudioFileError(AppException):
-    """Audio file processing error."""
+class BadRequestError(AppException):
+    """Bad request error (400)."""
 
-    def __init__(self, message: str, details: dict | None = None):
+    def __init__(
+        self,
+        message: str = "Bad request",
+        details: dict[str, Any] | None = None,
+    ):
+        super().__init__(message, status_code=400, details=details)
+
+
+class UnauthorizedError(AppException):
+    """Unauthorized error (401)."""
+
+    def __init__(
+        self,
+        message: str = "Unauthorized",
+        details: dict[str, Any] | None = None,
+    ):
+        super().__init__(message, status_code=401, details=details)
+
+
+class ForbiddenError(AppException):
+    """Forbidden error (403)."""
+
+    def __init__(
+        self,
+        message: str = "Forbidden",
+        details: dict[str, Any] | None = None,
+    ):
+        super().__init__(message, status_code=403, details=details)
+
+
+class NotFoundError(AppException):
+    """Not found error (404)."""
+
+    def __init__(
+        self,
+        message: str = "Resource not found",
+        resource: str | None = None,
+        details: dict[str, Any] | None = None,
+    ):
+        """Initialize not found error.
+
+        Args:
+            message: Error message
+            resource: Type of resource that was not found
+            details: Additional error details
+        """
+        if resource:
+            details = details or {}
+            details["resource_type"] = resource
+        super().__init__(message, status_code=404, details=details)
+
+
+class AudioFileError(AppException):
+    """Audio file processing error (400)."""
+
+    def __init__(
+        self,
+        message: str,
+        filename: str | None = None,
+        details: dict[str, Any] | None = None,
+    ):
+        """Initialize audio file error.
+
+        Args:
+            message: Error message
+            filename: Name of the audio file
+            details: Additional error details
+        """
+        if filename:
+            details = details or {}
+            details["filename"] = filename
         super().__init__(message, status_code=400, details=details)
 
 
 class TranscriptionError(AppException):
-    """Transcription processing error."""
+    """Transcription processing error (500)."""
 
-    def __init__(self, message: str, details: dict | None = None):
+    def __init__(
+        self,
+        message: str,
+        details: dict[str, Any] | None = None,
+    ):
         super().__init__(message, status_code=500, details=details)
 
 
 class ModelLoadError(AppException):
-    """Model loading error."""
+    """Model loading error (500)."""
 
-    def __init__(self, message: str, details: dict | None = None):
+    def __init__(
+        self,
+        message: str,
+        model: str | None = None,
+        details: dict[str, Any] | None = None,
+    ):
+        """Initialize model load error.
+
+        Args:
+            message: Error message
+            model: Name of the model that failed to load
+            details: Additional error details
+        """
+        if model:
+            details = details or {}
+            details["model"] = model
         super().__init__(message, status_code=500, details=details)
 
 
-class ConfigurationError(AppException):
-    """Configuration error."""
+class ServiceUnavailableError(AppException):
+    """Service unavailable error (503)."""
 
-    def __init__(self, message: str, details: dict | None = None):
+    def __init__(
+        self,
+        message: str = "Service unavailable",
+        service: str | None = None,
+        details: dict[str, Any] | None = None,
+    ):
+        """Initialize service unavailable error.
+
+        Args:
+            message: Error message
+            service: Name of the unavailable service
+            details: Additional error details
+        """
+        if service:
+            details = details or {}
+            details["service"] = service
+        super().__init__(message, status_code=503, details=details)
+
+
+class ConfigurationError(AppException):
+    """Configuration error (500)."""
+
+    def __init__(
+        self,
+        message: str,
+        setting: str | None = None,
+        details: dict[str, Any] | None = None,
+    ):
+        """Initialize configuration error.
+
+        Args:
+            message: Error message
+            setting: Name of the configuration setting
+            details: Additional error details
+        """
+        if setting:
+            details = details or {}
+            details["setting"] = setting
         super().__init__(message, status_code=500, details=details)

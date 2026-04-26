@@ -43,7 +43,6 @@ def setup_logging() -> None:
             compression="zip",
         )
 
-    # Set custom exception handler
     def handle_exception(exc: Exception) -> None:
         """Handle uncaught exceptions."""
         _logger.exception(f"Uncaught exception: {exc}")
