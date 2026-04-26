@@ -1,12 +1,21 @@
-# Simple Voice-to-Text System
+# Voice-to-Text: CLI + FastAPI Server
 
 A standalone, **fully local** voice-to-text system using OpenAI's Whisper (open-source). All models run on your machine—no API keys, no cloud calls; audio never leaves your device. This version supports **Dual Output (Original + Translation)** and **Local-First Speaker Diarization** (no tokens required).
 
+**Features:**
+- 🖥️ **CLI Interface**: Command-line tool for local transcription
+- 🌐 **FastAPI Server**: REST API for transcription services
+- 🔄 **Dual Mode**: Use as CLI or deploy as API server
+- 🌍 **Translation**: Translate to English with original transcript
+- 👥 **Speaker Diarization**: Identify and label different speakers
+- 🐳 **Docker Support**: Easy containerization
+
 ## Prerequisites
 
-- **Docker** and **Docker Compose** installed.
-- **FFmpeg** (only if running locally without Docker).
-- **Make** (installed by default on most Linux systems).
+- **Docker** and **Docker Compose** installed (for containerized usage)
+- **FFmpeg** (only if running locally without Docker)
+- **Make** (installed by default on most Linux systems)
+- **UV** (Python package manager - 10-100x faster than pip)
 
 ---
 
@@ -112,14 +121,48 @@ docker compose run --rm whisper audio.wav --diarize
 
 ---
 
-## 🛠️ Local Installation (Manual)
+## 🛠️ Local Installation
+
+### Using UV (Recommended - 10-100x faster)
+
+1. **Install FFmpeg**:
+   ```bash
+   sudo apt update && sudo apt install ffmpeg libsndfile1
+   ```
+
+2. **Install UV**:
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+3. **Setup and Install**:
+   ```bash
+   make setup
+   # Or manually:
+   uv venv
+   uv sync
+   ```
+
+4. **Run CLI**:
+   ```bash
+   uv run python transcribe.py audio.wav --translate --diarize
+   ```
+
+5. **Run API Server**:
+   ```bash
+   make dev
+   # Or manually:
+   uv run python -m uvicorn server:app --reload --host 0.0.0.0 --port 8000
+   ```
+
+### Using pip (Legacy - Deprecated)
 
 1. **Install FFmpeg**: `sudo apt update && sudo apt install ffmpeg libsndfile1`
 2. **Setup Environment**:
    ```bash
    python3 -m venv venv
    source venv/bin/activate
-   pip install -r requirements.txt
+   pip install -e .
    ```
 3. **Run**:
    ```bash
@@ -142,29 +185,83 @@ docker compose run --rm whisper audio.wav --diarize
 
 ---
 
-## 📁 Project structure
+## 📁 Project Structure
 
-- **`voice_to_text/`** — Main package: `config`, `io_utils`, `diarization`, `pipeline`, `cli`, `backends/` (openai + transformers Whisper).
-- **`transcribe.py`** — CLI entrypoint.
-- **`server.py`** — FastAPI server.
-- **`docs/`** — Architecture and structure (see `docs/ARCHITECTURE.md`, `docs/PROJECT_STRUCTURE.md`).
+```
+voice-to-text/
+├── voice_to_text/          # Main package
+│   ├── __init__.py        # Package initialization
+│   ├── cli.py             # CLI interface
+│   ├── config.py          # Configuration
+│   ├── diarization.py     # Speaker diarization
+│   ├── io_utils.py        # File I/O utilities
+│   ├── pipeline.py        # Transcription pipeline
+│   └── backends/          # Whisper backends (openai, transformers)
+├── transcribe.py          # CLI entrypoint
+├── server.py              # FastAPI server
+├── .claude/               # Development guide
+│   └── CLAUDE.md          # AI development documentation
+├── pyproject.toml         # Project configuration (UV)
+├── Makefile               # Automation commands
+├── compose.yaml           # Docker Compose configuration
+└── Dockerfile             # Container image
+```
 
-See **`docs/ARCHITECTURE.md`** for data flow and **`docs/PROJECT_STRUCTURE.md`** for a file-by-file reference.
+- **CLI Mode**: Run `transcribe.py` for local transcription
+- **API Mode**: Run `server.py` for REST API service
+- **Docker Mode**: Use `make server` for containerized API
+
+See **[`.claude/CLAUDE.md`](.claude/CLAUDE.md)** for comprehensive development guide.
 
 ---
 
 ## 🧹 Code Quality
 
-We use **Ruff** for linting and formatting.
+We use **Ruff** for linting and formatting, **Black** for code formatting, **MyPy** for type checking, and **Bandit** for security scanning.
 
 ### Check for issues
 
 ```bash
-make lint
+make lint           # Ruff linting
+make type-check     # MyPy type checking
+make format         # Black formatting
+make check-all      # Run all checks
+make fix-all        # Auto-fix all issues
 ```
 
-### Auto-format code
+### Run full CI locally
 
 ```bash
-make format
+make ci             # Run pre-commit hooks, security scan, and build
 ```
+
+---
+
+## 🚀 Development
+
+### Setup Development Environment
+
+```bash
+# Full setup (recommended)
+make setup
+
+# Install pre-commit hooks
+make pre-commit-install
+
+# Start development server with hot reload
+make dev
+```
+
+### Available Commands
+
+```bash
+make help           # Show all available commands
+```
+
+---
+
+## 📚 Documentation
+
+- **[`.claude/CLAUDE.md`](.claude/CLAUDE.md)** - Comprehensive development guide
+- **[`docs/`](docs/)** - Additional documentation
+- **API Documentation** - Available at http://localhost:8000/docs when server is running

@@ -8,9 +8,10 @@
 
 ## 🎯 Project Overview
 
-Voice-to-Text is an AI-powered voice transcription service using OpenAI's Whisper model. The system uses FastAPI for the REST API with support for transcription, translation, and speaker diarization using SpeechBrain.
+Voice-to-Text is an AI-powered voice transcription service using OpenAI's Whisper model. The system provides both a **CLI interface** and a **FastAPI REST API** with support for transcription, translation, and speaker diarization using SpeechBrain.
 
 ### Core Architecture
+- **CLI Interface**: Command-line tool for local transcription
 - **API Layer**: FastAPI with Pydantic v2 for validation
 - **Transcription Engine**: OpenAI Whisper (multiple model sizes)
 - **Speaker Diarization**: SpeechBrain for speaker identification
@@ -46,10 +47,12 @@ python-semantic-release  # Automated versioning
 
 ```
 voice-to-text/
+├── .claude/                     # Claude AI development guide
+│   └── CLAUDE.md               # This file
 ├── voice_to_text/              # Package directory
 │   ├── __init__.py            # Package init with __version__
-│   ├── backends/              # Whisper backends
-│   ├── cli.py                 # CLI interface (legacy)
+│   ├── backends/              # Whisper backends (openai, transformers)
+│   ├── cli.py                 # CLI interface
 │   ├── config.py              # Configuration settings
 │   ├── diarization.py         # Speaker diarization
 │   ├── io_utils.py            # File I/O utilities
@@ -58,13 +61,15 @@ voice-to-text/
 ├── transcripts/                # Output transcripts
 ├── tests/                      # Test suite (future)
 ├── docs/                       # Documentation
+├── server.py                   # FastAPI server entry point
+├── transcribe.py              # CLI entry point
 ├── pyproject.toml             # Project configuration
 ├── Makefile                   # Development automation
 ├── compose.yaml               # Docker compose setup
 ├── Dockerfile                 # Production container image
 ├── .pre-commit-config.yaml    # Git hooks
 ├── .env.example               # Environment template
-└── CLAUDE.md                  # This file
+└── README.md                  # User documentation
 ```
 
 ---
@@ -94,6 +99,21 @@ make check-all          # All quality checks
 make fix-all            # Auto-fix issues
 ```
 
+### CLI Usage
+```bash
+# Basic transcription
+uv run python transcribe.py audio.wav --model base
+
+# With translation
+uv run python transcribe.py audio.wav --translate
+
+# With speaker diarization
+uv run python transcribe.py audio.wav --diarize
+
+# All features
+uv run python transcribe.py audio.wav --translate --diarize
+```
+
 ### Docker Development
 ```bash
 # Start with Docker (recommended)
@@ -109,23 +129,14 @@ make docker-logs        # View logs
 make stop               # Stop services
 ```
 
-### Code Quality Standards
-```bash
-# Before committing
-make fix-all            # Fix formatting and linting
-make check-all          # Verify all checks pass
-
-# Git hooks (pre-commit) run automatically
-make pre-commit-run     # Run manually if needed
-```
-
 ---
 
 ## 📝 Code Conventions
 
 ### File Organization
-- **Routes**: Inline in `server.py` for simple API
-- **Models**: Pydantic models in `voice_to_text/`
+- **CLI**: `transcribe.py` - Entry point for CLI interface
+- **API**: `server.py` - FastAPI application
+- **Models**: Pydantic models inline for simple API
 - **Services**: Business logic in `voice_to_text/pipeline.py`
 - **Config**: Settings in `voice_to_text/config.py`
 
@@ -229,7 +240,6 @@ TRANSCRIPT_DIR = Path(os.getenv("TRANSCRIPT_DIR", "/app/transcripts"))
 ### Response Formatting
 ```python
 # Use standardized response format
-from fastapi import Response
 from typing import Any
 
 def success_response(
@@ -286,6 +296,7 @@ async def save_upload_file(
 # Test structure mirrors app structure
 tests/
 ├── test_api.py              # API endpoint tests
+├── test_cli.py              # CLI interface tests
 ├── test_pipeline.py         # Transcription pipeline tests
 ├── test_diarization.py      # Diarization tests
 └── conftest.py              # Pytest configuration
@@ -390,7 +401,13 @@ def complex_function(param1: str, param2: int) -> dict:
 
 ## 🎯 Common Tasks
 
-### Adding a New Endpoint
+### Adding a New CLI Option
+1. Add argument in `transcribe.py`
+2. Update `voice_to_text/cli.py` if needed
+3. Add tests in `tests/test_cli.py`
+4. Update documentation
+
+### Adding a New API Endpoint
 1. Define endpoint in `server.py`
 2. Create Pydantic request/response models
 3. Add business logic in `voice_to_text/pipeline.py`
