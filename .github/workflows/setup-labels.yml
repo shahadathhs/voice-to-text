@@ -8,6 +8,8 @@ on:
     paths:
       - '.github/workflows/setup-labels.yml'
       - '.github/labels-config.yml'
+    branches:
+      - main
   # Run on pull_request to ensure labels exist for Dependabot
   pull_request:
     types: [opened, synchronize]
@@ -16,8 +18,8 @@ jobs:
   create-labels:
     name: Create Labels
     runs-on: ubuntu-latest
-    # Only run for Dependabot PRs or manual triggers
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.user.login, 'dependabot') || github.actor == 'shahadathhs'
+    # Run for manual triggers, pushes to main, or Dependabot PRs
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'push' || contains(github.event.pull_request.user.login, 'dependabot') || github.actor == 'shahadathhs'
 
     steps:
       - name: Create repository labels
