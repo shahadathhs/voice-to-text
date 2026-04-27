@@ -50,3 +50,7 @@ logs/
 
 # OS
 .DS_Store
+
+# Media files (user-uploaded content)
+media/uploads/
+media/transcripts/

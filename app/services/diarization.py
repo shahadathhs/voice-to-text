@@ -97,8 +97,8 @@ def perform_diarization(
     """
     print("[*] Extracting speaker embeddings for diarization...")
     try:
+        import librosa
         import torch
-        from pydub import AudioSegment
         from sklearn.cluster import AgglomerativeClustering
         from speechbrain.inference.speaker import EncoderClassifier
     except Exception as e:
@@ -112,26 +112,31 @@ def perform_diarization(
             savedir=os.path.join(os.path.expanduser("~"), ".cache", "speechbrain"),
         )
 
-    audio = AudioSegment.from_file(audio_path)
-    if audio.frame_rate != settings.DIARIZE_SAMPLE_RATE:
-        audio = audio.set_frame_rate(settings.DIARIZE_SAMPLE_RATE)
-    if audio.channels > 1:
-        audio = audio.set_channels(1)
+    # Load audio with librosa (Python 3.13+ compatible)
+    audio, sr = librosa.load(
+        audio_path,
+        sr=settings.DIARIZE_SAMPLE_RATE,
+        mono=True,
+    )
 
     chunks = _build_diarization_chunks(segments)
     embeddings_list = []
     chunk_meta = []
 
     for start_s, end_s, seg_idx in chunks:
-        start_ms = int(start_s * 1000)
-        end_ms = int(end_s * 1000)
-        seg_audio = audio[start_ms:end_ms]
-        if len(seg_audio) < settings.MIN_CHUNK_MS:
+        # Convert seconds to sample indices
+        start_sample = int(start_s * sr)
+        end_sample = int(end_s * sr)
+
+        # Extract audio segment
+        seg_audio = audio[start_sample:end_sample]
+
+        # Check minimum duration in samples
+        if len(seg_audio) < (settings.MIN_CHUNK_MS * sr // 1000):
             continue
-        samples = np.array(seg_audio.get_array_of_samples()).astype(np.float32) / (
-            2**15
-        )
-        signal = torch.from_numpy(samples).to(device)
+
+        # Convert to tensor (librosa already returns float32 normalized to [-1, 1])
+        signal = torch.from_numpy(seg_audio).to(device)
         with torch.no_grad():
             emb = classifier.encode_batch(signal.unsqueeze(0))
             embeddings_list.append(emb.squeeze().cpu().numpy())

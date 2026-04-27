@@ -3,7 +3,7 @@
 import shutil
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import torch
 from fastapi import UploadFile
@@ -14,7 +14,7 @@ from app.core.logger import logger
 
 try:
     from app.services.pipeline import transcribe as legacy_transcribe
-    from app.utils import get_unique_filename, save_transcript
+    from app.utils import save_transcript
     from app.whisper import load_openai_whisper, load_transformers_whisper
 
     LEGACY_AVAILABLE = True
@@ -110,6 +110,7 @@ class TranscriptionService:
         diarize_threshold: float = 0.35,
         max_speakers: int | None = None,
         use_silhouette: bool = False,
+        base_url: str | None = None,
     ) -> dict[str, Any]:
         """Transcribe an audio file.
 
@@ -120,6 +121,7 @@ class TranscriptionService:
             diarize_threshold: Clustering threshold for diarization
             max_speakers: Maximum number of speakers
             use_silhouette: Use silhouette analysis
+            base_url: Base URL for constructing full URLs (e.g., http://localhost:8000)
 
         Returns:
             Transcription result with text and metadata
@@ -131,42 +133,58 @@ class TranscriptionService:
         if not self._initialized:
             raise TranscriptionError("Service not initialized")
 
-        temp_path: Path | None = None
+        uploaded_file_path: Path | None = None
+        is_uploaded_file = False
 
         try:
-            # Handle UploadFile
-            if isinstance(audio_file, UploadFile):
+            # Handle UploadFile (check for file attribute which is unique to UploadFile)
+            if hasattr(audio_file, "file") and hasattr(audio_file, "filename"):
+                upload = cast(UploadFile, audio_file)
+
                 # Validate file size
-                if audio_file.size and audio_file.size > settings.max_file_size:
+                if upload.size and upload.size > settings.max_file_size:
                     raise AudioFileError(
-                        f"File too large: {audio_file.size} > {settings.max_file_size}"
+                        f"File too large: {upload.size} > {settings.max_file_size}"
                     )
 
                 # Validate file format
-                if audio_file.filename:
-                    file_ext = audio_file.filename.split(".")[-1].lower()
-                    if file_ext not in settings.allowed_formats:
-                        raise AudioFileError(
-                            f"Invalid file format: {file_ext}. Allowed: {settings.allowed_formats}"
-                        )
+                if not upload.filename:
+                    raise AudioFileError("Uploaded file has no filename")
 
-                temp_filename = f"temp_{audio_file.filename}"
-                temp_path = Path(settings.audio_dir) / temp_filename
+                file_ext = upload.filename.split(".")[-1].lower()
+                if file_ext not in settings.allowed_formats:
+                    raise AudioFileError(
+                        f"Invalid file format: {file_ext}. Allowed: {settings.allowed_formats}"
+                    )
 
-                with temp_path.open("wb") as buffer:
-                    shutil.copyfileobj(audio_file.file, buffer)
+                # Save to uploads directory with unique filename (preserving original extension)
+                from datetime import datetime
 
-                audio_path = temp_path
+                original_name = Path(upload.filename).stem
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                filename = f"{original_name}_{timestamp}.{file_ext}"
+                uploaded_file_path = Path(settings.uploads_dir) / filename
 
-                logger.info(f"Processing uploaded file: {audio_file.filename}")
+                with uploaded_file_path.open("wb") as buffer:
+                    shutil.copyfileobj(upload.file, buffer)
+
+                audio_path = uploaded_file_path
+                is_uploaded_file = True
+
+                logger.info(
+                    f"Processing uploaded file: {upload.filename} -> {filename}"
+                )
 
             # Handle Path
-            else:
+            elif isinstance(audio_file, Path):
                 if not audio_file.exists():
                     raise AudioFileError(f"Audio file not found: {audio_file}")
 
                 audio_path = audio_file
                 logger.info(f"Processing file: {audio_path}")
+
+            else:
+                raise AudioFileError(f"Invalid audio file type: {type(audio_file)}")
 
             # Validate file exists
             if not audio_path.exists():
@@ -191,24 +209,53 @@ class TranscriptionService:
             else:
                 raise TranscriptionError("Legacy transcription not available")
 
+            from app.utils import get_unique_filename
+
             output_filename = get_unique_filename(audio_path.name)
             saved_path = save_transcript(transcript_text, output_filename)
 
             logger.info(f"Transcription saved to: {saved_path}")
 
+            # Build response metadata
+            response_metadata = {
+                "model": settings.whisper_model,
+                "backend": self.models.get("whisper_backend", settings.whisper_backend),
+                "device": self.models.get("device", "unknown"),
+                "translated": translate or settings.enable_translation,
+                "diarized": diarize or settings.enable_diarization,
+            }
+
+            # Determine base URL (use provided or fall back to settings)
+            if base_url is None:
+                base_url = settings.api_host or ""
+
+            # Normalize base URL (remove trailing slash)
+            base_url = base_url.rstrip("/")
+
+            # Add audio file info
+            if is_uploaded_file and uploaded_file_path:
+                # For uploaded files, return full URL instead of path
+                audio_filename = uploaded_file_path.name
+                audio_url_path = f"/uploads/{audio_filename}"
+                response_metadata["audio_file"] = audio_url_path
+                response_metadata["audio_url"] = (
+                    f"{base_url}{audio_url_path}" if base_url else audio_url_path
+                )
+            else:
+                # For local files, return the path
+                response_metadata["audio_file"] = str(audio_path)
+
+            # Add transcript URL
+            transcript_path = f"/transcripts/{saved_path.name}"
+            response_metadata["transcript_file"] = str(saved_path.name)
+            response_metadata["transcript_url"] = (
+                f"{base_url}{transcript_path}" if base_url else transcript_path
+            )
+
             return {
                 "transcript": transcript_text,
                 "saved_to": str(saved_path),
-                "metadata": {
-                    "model": settings.whisper_model,
-                    "backend": self.models.get(
-                        "whisper_backend", settings.whisper_backend
-                    ),
-                    "device": self.models.get("device", "unknown"),
-                    "translated": translate or settings.enable_translation,
-                    "diarized": diarize or settings.enable_diarization,
-                    "audio_file": str(audio_path),
-                },
+                "metadata": response_metadata,
             }
 
         except AudioFileError:
@@ -216,15 +263,6 @@ class TranscriptionService:
         except Exception as e:
             logger.error(f"Transcription failed: {e}", exc_info=True)
             raise TranscriptionError(f"Transcription failed: {e}") from e
-
-        finally:
-            # Cleanup temp file
-            if temp_path and temp_path.exists():
-                try:
-                    temp_path.unlink()
-                    logger.debug(f"Cleaned up temp file: {temp_path}")
-                except Exception as e:
-                    logger.warning(f"Failed to cleanup temp file: {e}")
 
     def cleanup(self) -> None:
         """Cleanup resources."""

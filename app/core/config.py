@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0", description="Server host")  # nosec: B104
     port: int = Field(default=8000, description="Server port")
     workers: int = Field(default=1, description="Number of worker processes")
+    api_host: str | None = Field(
+        default=None,
+        description="API base URL (e.g., http://localhost:8000 or https://api.example.com). Auto-detected from request if None.",
+    )
     max_file_size: int = Field(
         default=500 * 1024 * 1024, description="Max file size in bytes"
     )
@@ -44,10 +48,14 @@ class Settings(BaseSettings):
     base_dir: Path = Field(default_factory=lambda: Path(__file__).parent.parent.parent)
     media_dir: str | Path = Field(
         default="media",
-        description="Media files directory (contains audio/ and transcripts/)",
+        description="Media files directory (contains audio/, uploads/, and transcripts/)",
     )
     audio_dir: str | Path = Field(
-        default="media/audio", description="Audio files directory"
+        default="media/audio", description="Default audio files directory (CLI usage)"
+    )
+    uploads_dir: str | Path = Field(
+        default="media/uploads",
+        description="Uploaded audio files directory (API usage)",
     )
     transcript_dir: str | Path = Field(
         default="media/transcripts", description="Transcript output directory"
@@ -160,7 +168,9 @@ class Settings(BaseSettings):
         """Check if running in testing mode."""
         return self.environment.lower() in ("testing", "test")
 
-    @field_validator("audio_dir", "transcript_dir", "model_cache_dir", mode="before")
+    @field_validator(
+        "audio_dir", "uploads_dir", "transcript_dir", "model_cache_dir", mode="before"
+    )
     @classmethod
     def resolve_paths(cls, v: str | Path) -> Path:
         """Resolve path strings to Path objects."""
@@ -168,7 +178,7 @@ class Settings(BaseSettings):
             return Path(v)
         return v
 
-    @field_validator("audio_dir", "transcript_dir", "model_cache_dir")
+    @field_validator("audio_dir", "uploads_dir", "transcript_dir", "model_cache_dir")
     @classmethod
     def make_absolute(cls, v: Path, info) -> Path:
         """Make paths absolute relative to base directory."""
@@ -192,6 +202,7 @@ def ensure_directories() -> None:
     directories = [
         settings.media_dir,
         settings.audio_dir,
+        settings.uploads_dir,
         settings.transcript_dir,
         settings.model_cache_dir,
     ]

@@ -1,9 +1,10 @@
 """FastAPI routes for voice-to-text API."""
 
+from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, File, UploadFile, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, File, Request, Response, UploadFile, status
+from fastapi.responses import FileResponse, JSONResponse
 
 from app.core.config import settings
 from app.core.errors import AudioFileError, TranscriptionError
@@ -174,6 +175,7 @@ def health_check() -> dict[str, Any]:
     },
 )
 async def transcribe_endpoint(
+    request: Request,
     file: UploadFile = File(
         ...,
         description="Audio file to transcribe (supported: wav, mp3, ogg, m4a, flac, aac)",
@@ -254,6 +256,9 @@ async def transcribe_endpoint(
                 status_code=status.HTTP_400_BAD_REQUEST,
             )
 
+        # Get base URL from request
+        base_url = str(request.base_url)
+
         # Transcribe
         result = await transcription_service.transcribe_file(
             audio_file=file,
@@ -262,6 +267,7 @@ async def transcribe_endpoint(
             diarize_threshold=diarize_threshold,
             max_speakers=max_speakers,
             use_silhouette=use_silhouette,
+            base_url=base_url,
         )
 
         logger.info(f"Transcription completed successfully for {file.filename}")
@@ -311,3 +317,60 @@ async def transcribe_endpoint(
             ).model_dump(),
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+# =============================================================================
+# Static File Serving
+# =============================================================================
+
+
+@router.get(
+    "/uploads/{filename}",
+    summary="Get uploaded audio file",
+    description="Retrieve an uploaded audio file by filename",
+    responses={
+        200: {"description": "File returned", "content": {"audio/*": {}}},
+        404: {"description": "File not found"},
+    },
+)
+async def get_uploaded_file(filename: str) -> Response:
+    """Serve uploaded audio files."""
+    file_path = Path(settings.uploads_dir) / filename
+
+    if not file_path.exists():
+        return JSONResponse(
+            content={"status": "error", "message": "File not found"},
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    return FileResponse(
+        path=file_path,
+        media_type="audio/mpeg",
+        filename=filename,
+    )
+
+
+@router.get(
+    "/transcripts/{filename}",
+    summary="Get transcript file",
+    description="Retrieve a transcript file by filename",
+    responses={
+        200: {"description": "File returned", "content": {"text/plain": {}}},
+        404: {"description": "File not found"},
+    },
+)
+async def get_transcript_file(filename: str) -> Response:
+    """Serve transcript files."""
+    file_path = Path(settings.transcript_dir) / filename
+
+    if not file_path.exists():
+        return JSONResponse(
+            content={"status": "error", "message": "File not found"},
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
+
+    return FileResponse(
+        path=file_path,
+        media_type="text/plain",
+        filename=filename,
+    )

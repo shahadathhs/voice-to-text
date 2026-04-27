@@ -5,6 +5,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from app.core.config import settings
+
 
 def check_file(path: str) -> str:
     """Validate that the file exists; exit with error message if not."""
@@ -22,9 +24,9 @@ def get_unique_filename(audio_path: str) -> str:
 
 
 def save_transcript(text: str, filename: str) -> Path:
-    """Save transcript text to transcripts/<filename>; return the file path."""
-    output_dir = Path("transcripts")
-    output_dir.mkdir(exist_ok=True)
+    """Save transcript text to media/transcripts/<filename>; return the file path."""
+    output_dir = Path(settings.transcript_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
     file_path = output_dir / filename
     file_path.write_text(text, encoding="utf-8")
     return file_path

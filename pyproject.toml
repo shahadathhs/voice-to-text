@@ -35,7 +35,7 @@ dependencies = [
     "pandas",
 
     # Audio Processing
-    "pydub",
+    "librosa",
     "speechbrain",
     "huggingface-hub<1.13.0",
     "scikit-learn",
