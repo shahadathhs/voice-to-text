@@ -13,6 +13,7 @@ RUN_CMD := uv run
 .PHONY: docker-build docker-down docker-rebuild docker-ps
 .PHONY: clean shell logs update freeze list add add-dev remove ci security info
 .PHONY: server stop restart logs docs status release-publish release-version
+.PHONY: transcribe clean-transcripts list-audio list-transcripts cli-info cli-dirs
 
 .DEFAULT_GOAL := help
 
@@ -222,6 +223,64 @@ add-dev: ## Add a new dev package (use PKG=name)
 remove: ## Remove a package (use PKG=name)
 	@echo "Removing package: $(PKG)..."
 	@uv remove $(PKG)
+
+# =============================================================================
+# CLI COMMANDS
+# =============================================================================
+transcribe: ## Transcribe audio file (use FILE=path/to/audio.mp3)
+	@echo "🎙️  Transcribing audio file..."
+	@if [ -z "$(FILE)" ]; then \
+		echo "Error: Please specify FILE=path/to/audio.mp3"; \
+		exit 1; \
+	fi
+	@$(RUN_CMD) python -m app.cli.main $(FILE) --model $(MODEL) --translate=$(TRANSLATE) --diarize=$(DIARIZE)
+
+transcribe-tiny: ## Transcribe with tiny model (use FILE=path/to/audio.mp3)
+	@$(MAKE) transcribe FILE=$(FILE) MODEL=tiny
+
+transcribe-translate: ## Transcribe with translation (use FILE=path/to/audio.mp3)
+	@$(MAKE) transcribe FILE=$(FILE) TRANSLATE=true
+
+transcribe-diarize: ## Transcribe with speaker diarization (use FILE=path/to/audio.mp3)
+	@$(MAKE) transcribe FILE=$(FILE) DIARIZE=true
+
+transcribe-all: ## Transcribe with all features (use FILE=path/to/audio.mp3)
+	@$(MAKE) transcribe FILE=$(FILE) MODEL=$(MODEL) TRANSLATE=true DIARIZE=true
+
+list-audio: ## List available audio files in media/audio/
+	@echo "📁 Audio files in media/audio/:"
+	@ls -lh media/audio/ 2>/dev/null || echo "No audio directory found"
+
+list-transcripts: ## List transcript files in media/transcripts/
+	@echo "📁 Transcript files in media/transcripts/:"
+	@ls -lh media/transcripts/ 2>/dev/null || echo "No transcripts directory found"
+
+cli-info: ## Show CLI configuration and status
+	@echo "📊 CLI Configuration:"
+	@echo "====================="
+	@$(RUN_CMD) python -c "from app.core.config import settings; print(f'Audio Dir: {settings.audio_dir}'); print(f'Uploads Dir: {settings.uploads_dir}'); print(f'Transcript Dir: {settings.transcript_dir}'); print(f'Model Cache: {settings.model_cache_dir}')"
+	@echo ""
+	@echo "📁 Directory Status:"
+	@echo "====================="
+	@for dir in media/audio media/uploads media/transcripts model-cache; do \
+		if [ -d "$$dir" ]; then \
+			count=$$(ls -1 "$$dir" 2>/dev/null | wc -l); \
+			echo "✓ $$dir ($$count files)"; \
+		else \
+			echo "✗ $$dir (missing)"; \
+		fi; \
+	done
+
+cli-dirs: ## Ensure all CLI directories exist
+	@echo "📁 Creating CLI directories..."
+	@mkdir -p media/audio media/uploads media/transcripts model-cache
+	@echo "✓ All directories created"
+
+# Default values for CLI commands
+MODEL := base
+TRANSLATE := false
+DIARIZE := false
+FILE :=
 
 # =============================================================================
 # CI/CD
