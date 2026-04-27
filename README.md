@@ -1,182 +1,391 @@
-# Voice-to-Text: CLI + FastAPI Server
+# Voice-to-Text
 
-[![Python](https://img.shields.io/badge/python-3.14+-blue.svg)](https://www.python.org/downloads/release/python-3140/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-green.svg)](https://fastapi.tiangolo.com)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-
-**Fully local** AI-powered voice transcription using OpenAI's Whisper. No API keys, no cloud calls, complete privacy.
-
----
+AI-powered voice transcription service using OpenAI's Whisper model. Provides both a command-line interface and REST API server with support for transcription, translation, and speaker diarization.
 
 ## Features
 
-- **CLI & API**: Command-line tool or REST API server
-- **Translation**: Translate to English
-- **Speaker Diarization**: Identify and label different speakers
+- **CLI and API**: Use as a command-line tool or deploy as a REST API server
+- **Translation**: Translate non-English audio to English
+- **Speaker Diarization**: Identify and label different speakers in conversations
 - **Multiple Backends**: OpenAI Whisper or Hugging Face Transformers
-- **Docker Support**: One-command deployment
-- **Fully Local**: Your audio never leaves your machine
-
----
+- **Fully Local**: Complete privacy - your audio never leaves your machine
+- **Python 3.14+ Support**: Modern Python with UV package manager
+- **Docker Ready**: One-command deployment with Docker Compose
 
 ## Quick Start
 
 ### Docker (Recommended)
 
 ```bash
-# Start API server
+# Start the API server
 make server
 
-# Access API docs at http://localhost:8000/docs
+# Access API documentation at http://localhost:8000/docs
 ```
 
 ### Local Installation
 
 ```bash
-# Install dependencies
+# Install system dependencies (UV, FFmpeg) and Python packages
 ./setup.sh
 
 # Run CLI
-uv run python cli.py media/audio/sample.wav --translate --diarize
+voice-to-text media/audio/sample.wav
+
+# Or use the short alias
+vtt media/audio/sample.wav
 
 # Run API server
 make dev
 ```
 
-### Example Usage
+## Usage
+
+### CLI Usage
+
+The command-line interface provides direct access to transcription features:
 
 ```bash
-# CLI
-uv run python cli.py media/audio/sample.wav --diarize
+# Basic transcription
+voice-to-text media/audio/sample.wav
 
-# API
-curl -X POST "http://localhost:8000/transcribe?diarize=true" \
-  -F "file=@media/audio/sample.mp3"
+# With translation to English
+voice-to-text media/audio/sample.wav --translate
+
+# With speaker diarization
+voice-to-text media/audio/meeting.mp3 --diarize
+
+# All features combined
+voice-to-text media/audio/conversation.wav --translate --diarize --max-speakers 2
+
+# Use different model
+voice-to-text media/audio/sample.wav --model tiny
+
+# Custom output location
+voice-to-text media/audio/sample.wav --output transcript.txt
 ```
 
----
+#### CLI Commands via Makefile
 
-## Project Structure
-
-```
-voice-to-text/
-├── app/                    # Application code
-│   ├── api/               # REST API endpoints
-│   ├── cli/               # CLI interface
-│   ├── core/              # Configuration & errors
-│   ├── schemas/           # Pydantic models
-│   ├── services/          # Business logic
-│   └── whisper/           # Whisper implementations
-├── media/                 # Audio input & transcript output
-├── cli.py                 # CLI entry point
-├── server.py              # API server entry point
-└── Makefile              # Automation commands
-```
-
----
-
-## Documentation
-
-| Document | Description |
-|----------|-------------|
-| **[CONTRIBUTING.md](CONTRIBUTING.md)** | How to contribute |
-| **[SECURITY.md](SECURITY.md)** | Security policy |
-| **[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)** | Community guidelines |
-| **[.claude/CLAUDE.md](.claude/CLAUDE.md)** | Development guide |
-
-**API Documentation**: http://localhost:8000/docs (when server is running)
-
----
-
-## Configuration
-
-### Environment Variables
+The Makefile provides convenient shortcuts for common tasks:
 
 ```bash
-# .env file
-WHISPER_MODEL=base           # tiny, base, small, medium, large
-WHISPER_BACKEND=openai       # openai, transformers
-WHISPER_DEVICE=cpu           # cpu, cuda
-ENABLE_TRANSLATION=false
-ENABLE_DIARIZATION=false
+# Transcription commands
+make transcribe FILE=media/audio/sample.wav
+make transcribe-tiny FILE=media/audio/sample.mp3
+make transcribe-translate FILE=media/audio/meeting.wav
+make transcribe-diarize FILE=media/audio/conversation.mp3
+make transcribe-all FILE=media/audio/file.wav
+
+# File management
+make list-audio          # List available audio files
+make list-transcripts    # List transcript files
+make clean-transcripts   # Clean all transcripts
+
+# CLI management
+make cli-info            # Show configuration and status
+make cli-dirs            # Ensure all directories exist
 ```
 
-### CLI Options
+### API Usage
 
-```bash
-uv run python cli.py audio.wav [OPTIONS]
-
-Options:
-  --model {tiny,base,small,medium,large}  Model size (default: base)
-  --translate                            Translate to English
-  --diarize                              Enable speaker diarization
-  --backend {openai,transformers}         Whisper backend
-  --verbose, -v                          Enable verbose output
-```
-
----
-
-## Development
-
-```bash
-# Setup development environment
-make setup
-
-# Run development server with hot reload
-make dev
-
-# Run code quality checks
-make check-all          # Run all checks
-make fix-all           # Auto-fix issues
-make lint              # Ruff linting
-make format            # Black formatting
-make type-check        # MyPy type checking
-
-# Run tests
-make test
-
-# Build Docker image
-make docker-build
-```
-
----
-
-## Docker
+Start the server and upload audio files via the REST API:
 
 ```bash
 # Start server
 make server
 
-# Stop server
-make stop
+# Transcribe with curl
+curl -X POST "http://localhost:8000/transcribe" \
+  -F "file=@media/audio/sample.mp3"
 
-# View logs
-make logs
+# With translation and diarization
+curl -X POST "http://localhost:8000/transcribe?translate=true&diarize=true" \
+  -F "file=@media/audio/meeting.mp3"
+```
 
-# Rebuild
+Access interactive API documentation at:
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+### API Response Format
+
+The API returns full URLs for accessing uploaded audio and transcripts:
+
+```json
+{
+  "transcript": "SPEAKER_00: Hello world\nSPEAKER_01: Hi there",
+  "saved_to": "media/transcripts/file_20260427_123456.txt",
+  "metadata": {
+    "model": "base",
+    "backend": "openai",
+    "device": "cpu",
+    "translated": false,
+    "diarized": true,
+    "audio_file": "/uploads/filename.mp3",
+    "audio_url": "http://localhost:8000/uploads/filename.mp3",
+    "transcript_file": "filename_20260427_123456.txt",
+    "transcript_url": "http://localhost:8000/transcripts/filename_20260427_123456.txt"
+  }
+}
+```
+
+## Project Structure
+
+```
+voice-to-text/
+├── app/                       # Application code
+│   ├── api/                   # REST API endpoints and routes
+│   ├── cli/                   # Command-line interface
+│   ├── core/                  # Configuration, errors, logging
+│   ├── schemas/               # Pydantic validation models
+│   ├── services/              # Business logic (transcription, diarization)
+│   ├── utils/                 # Utilities and helpers
+│   └── whisper/               # Whisper model implementations
+├── media/                     # Media files directory
+│   ├── audio/                 # Default audio files (CLI usage)
+│   ├── uploads/               # Uploaded audio files (API usage)
+│   └── transcripts/           # Transcription output
+├── compose.yaml               # Docker Compose configuration
+├── Dockerfile                 # Production container image
+├── Makefile                   # Development automation
+├── pyproject.toml            # Project configuration and dependencies
+└── setup.sh                   # System dependency installer
+```
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file from `.env.example` to configure the application:
+
+```bash
+# Server Configuration
+HOST=0.0.0.0
+PORT=8000
+WORKERS=1
+
+# Whisper Configuration
+WHISPER_MODEL=base           # tiny, base, small, medium, large
+WHISPER_BACKEND=openai       # openai, transformers
+WHISPER_DEVICE=cpu           # cpu, cuda
+
+# Feature Flags
+ENABLE_TRANSLATION=false
+ENABLE_DIARIZATION=false
+
+# Diarization Settings
+DIARIZE_THRESHOLD=0.35       # Clustering threshold (0.0-1.0)
+MAX_SPEAKERS=2               # Maximum number of speakers (optional)
+USE_SILHOUETTE=false         # Use silhouette analysis
+
+# Media Directories
+AUDIO_DIR=media/audio         # Default audio files (CLI)
+UPLOADS_DIR=media/uploads     # Uploaded files (API)
+TRANSCRIPT_DIR=media/transcripts
+MODEL_CACHE_DIR=model-cache
+
+# API Configuration
+MAX_FILE_SIZE=524288000      # 500 MB
+ALLOWED_FORMATS=wav,mp3,ogg,m4a,flac,aac
+API_HOST=http://localhost:8000  # For constructing full URLs (optional)
+```
+
+### CLI Options
+
+```bash
+voice-to-text audio.wav [OPTIONS]
+
+Positional Arguments:
+  input                   Path to audio file
+
+Options:
+  --model {tiny,base,small,medium,large}
+                          Whisper model size (default: base)
+  --backend {openai,transformers}
+                          Whisper backend (default: openai)
+  --translate             Translate non-English audio to English
+  --diarize               Enable speaker diarization
+  --diarize-threshold N   Clustering threshold (0.0-1.0, default: 0.35)
+  --max-speakers N        Fixed number of speakers
+  --use-silhouette        Estimate speakers from embeddings
+  --output, -o PATH       Output file path
+  --media-dir PATH        Custom media directory
+  --ensure-dirs           Create directories if needed (default: enabled)
+  --no-ensure-dirs        Disable directory creation
+  --verbose, -v           Enable verbose output
+  --debug                 Enable debug mode
+```
+
+## Development
+
+### Setup
+
+```bash
+# Install all dependencies (system and Python)
+make install-deps
+
+# Install pre-commit hooks
+make pre-commit-install
+```
+
+### Code Quality
+
+The project uses modern Python tooling for code quality:
+
+```bash
+# Run all checks
+make ci                    # Full CI pipeline
+
+# Individual checks
+make lint                 # Ruff linting
+make type-check           # MyPy type checking
+make security             # Bandit security scan
+make format               # Black code formatting
+make fix-all              # Auto-fix all issues
+```
+
+### Building
+
+```bash
+# Build distribution packages
+make build
+
+# Build Docker image
+make docker-build
+
+# Rebuild without cache
 make docker-rebuild
 ```
 
----
+### Docker Commands
+
+```bash
+make server               # Start API server (Docker)
+make stop                 # Stop server
+make restart              # Restart server
+make logs                 # View logs
+make ps                   # Check container status
+```
+
+## Tooling and Stack
+
+### Core Technologies
+- **Python 3.14+**: Modern Python with latest features
+- **UV**: Ultra-fast Python package manager (10-100x faster than pip)
+- **FastAPI 0.115+**: Modern, fast web framework for building APIs
+- **Pydantic v2**: Data validation using Python type annotations
+- **OpenAI Whisper**: State-of-the-art speech recognition model
+
+### Audio Processing
+- **Librosa**: Audio loading and processing (Python 3.13+ compatible)
+- **SpeechBrain**: Speaker diarization and embeddings
+- **SoundFile**: Audio I/O operations
+
+### Code Quality Tools
+- **Ruff**: Extremely fast Python linter and formatter
+- **Black**: Code formatting (PEP 8 compliant)
+- **MyPy**: Static type checking
+- **Bandit**: Security linter
+- **Pre-commit**: Git hooks for automated quality checks
+
+### Deployment
+- **Docker**: Containerization
+- **Docker Compose**: Multi-container orchestration
+- **GitHub Actions**: CI/CD pipeline with semantic-release
+
+## Installation Options
+
+### Option 1: Docker (Recommended for Production)
+
+```bash
+git clone https://github.com/shahadathhs/voice-to-text.git
+cd voice-to-text
+make server
+```
+
+### Option 2: Local Development
+
+```bash
+# Prerequisites: Python 3.14+, FFmpeg
+
+git clone https://github.com/shahadathhs/voice-to-text.git
+cd voice-to-text
+./setup.sh
+make dev
+```
+
+### Option 3: CLI Only (No Server)
+
+```bash
+git clone https://github.com/shahadathhs/voice-to-text.git
+cd voice-to-text
+./setup.sh
+voice-to-text path/to/audio.wav
+```
+
+## API Endpoints
+
+### Core Endpoints
+
+- `GET /` - API information and endpoints
+- `GET /health` - Health check and service status
+- `POST /transcribe` - Transcribe audio file
+
+### File Serving
+
+- `GET /uploads/{filename}` - Retrieve uploaded audio file
+- `GET /transcripts/{filename}` - Retrieve transcript file
+
+### Documentation
+
+- `GET /docs` - Swagger UI (interactive API documentation)
+- `GET /redoc` - ReDoc (alternative documentation)
+- `GET /openapi.json` - OpenAPI specification
 
 ## Contributing
 
-We welcome contributions! Please see **[CONTRIBUTING.md](CONTRIBUTING.md)** for guidelines.
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-Quick steps:
+### Development Workflow
+
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
 3. Make your changes
-4. Run `make check-all`
-5. Submit a pull request
+4. Run quality checks: `make ci`
+5. Commit with conventional commit format: `git commit -m "feat: add amazing feature"`
+6. Push to branch: `git push origin feature/amazing-feature`
+7. Open a Pull Request
 
----
+### Commit Convention
+
+Follow conventional commits:
+- `feat:` - New features
+- `fix:` - Bug fixes
+- `docs:` - Documentation changes
+- `refactor:` - Code refactoring
+- `test:` - Adding tests
+- `chore:` - Maintenance tasks
+
+## Documentation
+
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contribution guidelines
+- [SECURITY.md](SECURITY.md) - Security policy
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) - Community guidelines
+- [.claude/CLAUDE.md](.claude/CLAUDE.md) - Development guide
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
----
+## Requirements
 
-**Made with OpenAI Whisper, FastAPI, and UV**
+- Python 3.14 or higher
+- FFmpeg (for audio processing)
+- 4GB RAM minimum (8GB recommended for larger models)
+- 1GB disk space for models
+
+## Support
+
+- GitHub Issues: https://github.com/shahadathhs/voice-to-text/issues
+- Documentation: http://localhost:8000/docs (when server is running)
