@@ -293,12 +293,12 @@ security: ## Run security scan with bandit
 ci: pre-commit-run security build ## Run CI pipeline checks
 	@echo "Running CI pipeline..."
 
-release-publish: ## Publish release with semantic-release
+release-publish: ## Publish release (semantic-release - used by CI)
 	@echo "Publishing release..."
-	@$(RUN_CMD) semantic-release publish
+	@$(RUN_CMD) semantic-release version --vcs-release
 
-release-version: ## Bump version with semantic-release (no publish)
-	@echo "Bumping version..."
+release-dry-run: ## Test release without actual publishing
+	@echo "Testing release..."
 	@$(RUN_CMD) semantic-release version --no-commit
 
 # =============================================================================
