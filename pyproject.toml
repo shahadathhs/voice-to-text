@@ -51,11 +51,12 @@ dependencies = [
 path = "app/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["app", "voice_to_text"]
+packages = ["app"]
 
 [project.scripts]
 voice-to-text = "app.cli.main:main"
-vtt = "app.cli.main:main"  # Short alias
+vtt = "app.cli.main:main"
+api-server = "app.main:app"  # Direct server access
 
 [dependency-groups]
 dev = [
@@ -134,7 +135,7 @@ unfixable = []
 "server.py" = ["E402"]  # Allow lazy imports
 
 [tool.ruff.lint.isort]
-known-first-party = ["voice_to_text"]
+known-first-party = ["app"]
 
 # =============================================================================
 # Black Configuration
@@ -192,7 +193,6 @@ skips = ["B101"]  # Skip assert_used
 version_source = "tag"
 version_variables = [
     "app/__init__.py:__version__",
-    "voice_to_text/__init__.py:__version__",
 ]
 branch = "main"
 changelog_file = "CHANGELOG.md"
