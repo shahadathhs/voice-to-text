@@ -10,5 +10,8 @@ __pycache__/
 .git/
 .gitignore
 .dockerignore
-README.md
-docker-compose.yml
+compose.yaml
+
+
+# Exclude docs
+*.md
