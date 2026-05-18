@@ -37,7 +37,7 @@ dependencies = [
     # Audio Processing
     "librosa",
     "speechbrain",
-    "huggingface-hub<1.15.0",
+    "huggingface-hub<1.16.0",
     "scikit-learn",
 
     # Configuration & Logging
